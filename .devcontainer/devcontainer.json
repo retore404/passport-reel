@@ -8,7 +8,7 @@
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1.1.0": {}
   },
-  "forwardPorts": [],
+  "forwardPorts": [5173],
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
   },

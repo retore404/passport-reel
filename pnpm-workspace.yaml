@@ -1,5 +1,6 @@
 # アプリ・ツールのパッケージを追加したらここに列挙する。
-packages: []
+packages:
+  - apps/web
 
 engineStrict: true
 savePrefix: ""

@@ -11,6 +11,7 @@
 
 | パス | 内容 |
 | --- | --- |
+| `apps/web` | Web アプリ本体（Vite + React + TypeScript、フロントエンドのみ）。`pnpm --filter ./apps/web build` で `apps/web/dist` に静的ファイルを出力する |
 | `openspec/` | 仕様と変更提案（OpenSpec） |
 | `.agents/skills/` | コーディングエージェント用 skills（`.claude/skills` から symlink） |
 
