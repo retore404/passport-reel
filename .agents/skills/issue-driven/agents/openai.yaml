@@ -1,0 +1,4 @@
+interface:
+  display_name: "Issue駆動開発"
+  short_description: "GitHub issueを起点に実装・検証・PR作成まで進行"
+  default_prompt: "$issue-driven を使って、このGitHub issueの確認から実装・PR作成まで進めてください。"

@@ -1,0 +1,62 @@
+{
+  "model": "opus",
+  "permissions": {
+    "allow": [
+      "Skill",
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(git log:*)",
+      "Bash(git switch:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh label list:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh stack:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm format:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm knip)",
+      "Bash(pnpm check)",
+      "Bash(pnpm check:*)",
+      "Bash(pnpm fix)",
+      "Bash(openspec list:*)",
+      "Bash(openspec show:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec validate:*)",
+      "Bash(openspec instructions:*)",
+      "Bash(openspec context:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.claude.com)"
+    ],
+    "deny": [
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(pnpm dev)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm exec vitest:*)",
+      "Bash(pnpm dlx vitest:*)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Read(./**/secrets/**)"
+    ]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  }
+}

@@ -1,0 +1,6 @@
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[features]
+multi_agent = true
+default_mode_request_user_input = true

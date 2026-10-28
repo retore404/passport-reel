@@ -1,0 +1,4 @@
+interface:
+  display_name: "新規Issue作成"
+  short_description: "依頼を掘り下げてIssueを作成・分類・検証"
+  default_prompt: "$new-issue を使って、この依頼を整理し、GitHub Issueの作成・分類・検証まで進めてください。"

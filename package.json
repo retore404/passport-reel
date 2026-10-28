@@ -1,0 +1,30 @@
+{
+  "name": "passport-reel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "訪れたことのある国を時系列で可視化して動画にする",
+  "license": "ISC",
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "vitest run",
+    "knip": "knip",
+    "fix": "pnpm lint:fix && pnpm format",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm knip && pnpm test"
+  },
+  "devDependencies": {
+    "knip": "6.41.0",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.28.6"
+}
