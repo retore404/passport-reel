@@ -3,9 +3,16 @@ import { WorldMapCanvas } from "./WorldMapCanvas";
 
 export function App() {
   return (
-    <main style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
-      <h1>Passport Reel</h1>
-      <WorldMapCanvas visited={SAMPLE_VISITED_COUNTRIES} />
-    </main>
+    <div className="app">
+      <header className="topbar">
+        <h1 className="brand">
+          <span className="brand-logo" aria-hidden="true" />
+          Passport Reel
+        </h1>
+      </header>
+      <main className="map-stage">
+        <WorldMapCanvas visited={SAMPLE_VISITED_COUNTRIES} />
+      </main>
+    </div>
   );
 }
