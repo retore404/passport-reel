@@ -8,7 +8,8 @@ Passport Reel is an app that visualizes the countries the user has visited in ch
 
 ## Project Structure
 
-- No application package yet. The tech stack (including how videos are rendered) will be decided through an OpenSpec change.
+- `apps/web`: The frontend-only web app (Vite + React + TypeScript). The world map is drawn on Canvas with d3-geo. Build output is static files only (no server-side components).
+  - `pnpm --filter ./apps/web build` builds it into `apps/web/dist`.
 - When adding a workspace package, register it in `pnpm-workspace.yaml` and `vitest.config.ts` (`test.projects`), and update this section and `README.md`.
 
 ## Communication

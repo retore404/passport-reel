@@ -1,7 +1,18 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  // アプリの技術スタック確定時に、フレームワーク向けプラグイン（react, jsx-a11y 等）を追加する。
-  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "jsdoc", "node", "vitest"],
+  // apps/web は React を使うため、react（hooks のルールを含む）と jsx-a11y を有効にする。
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import",
+    "jsdoc",
+    "node",
+    "vitest",
+    "react",
+    "jsx-a11y",
+  ],
   "options": {
     "typeAware": true,
   },
@@ -15,6 +26,7 @@
     "unicorn/consistent-function-scoping": "off", // eslint-plugin-unicorn の recommended ではないため無効化
     "typescript/no-explicit-any": "error",
     "typescript/no-deprecated": "error", // 非推奨APIの使用を型情報から検出する
+    "react/react-in-jsx-scope": "off", // automatic JSX runtime（tsconfig の jsx: react-jsx）では React の import が不要なため
   },
   "settings": {
     "jsdoc": {
