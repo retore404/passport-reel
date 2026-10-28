@@ -1,0 +1,9 @@
+.agents/workspace/
+node_modules
+.vitest-attachments
+.vitest
+settings.local.json
+tmpwork/
+CLAUDE.local.md
+.pnpm-store
+dist/

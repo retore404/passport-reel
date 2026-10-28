@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // アプリの技術スタック確定時に、フレームワーク向けプラグイン（react, jsx-a11y 等）を追加する。
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "jsdoc", "node", "vitest"],
+  "options": {
+    "typeAware": true,
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+  },
+  "rules": {
+    "import/no-unassigned-import": "off",
+    "import/no-absolute-path": "off",
+    "unicorn/consistent-function-scoping": "off", // eslint-plugin-unicorn の recommended ではないため無効化
+    "typescript/no-explicit-any": "error",
+    "typescript/no-deprecated": "error", // 非推奨APIの使用を型情報から検出する
+  },
+  "settings": {
+    "jsdoc": {
+      "ignorePrivate": false,
+      "ignoreInternal": false,
+      "ignoreReplacesDocs": true,
+      "overrideReplacesDocs": true,
+      "augmentsExtendsReplacesDocs": false,
+      "implementsReplacesDocs": false,
+      "exemptDestructuredRootsFromChecks": false,
+      "tagNamePreference": {},
+    },
+    "vitest": {
+      "typecheck": false,
+    },
+  },
+  "env": {
+    "builtin": true,
+  },
+  "globals": {},
+}

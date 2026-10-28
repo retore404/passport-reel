@@ -1,0 +1,13 @@
+# アプリ・ツールのパッケージを追加したらここに列挙する。
+packages: []
+
+engineStrict: true
+savePrefix: ""
+ignoreScripts: true
+minimumReleaseAge: 10080 # 7 days (equivalent to npm's min-release-age=7)
+trustPolicy: no-downgrade
+
+# pnpm 版数の正は package.json#packageManager（SSOT）。
+# 実行中の pnpm と宣言版が異なる場合は、pnpm 自身が宣言版をダウンロードして実行する。
+pmOnFail: download
+minimumReleaseAgeExcludePrune: true
