@@ -1,5 +1,5 @@
 import type { Feature, Polygon } from "geojson";
-import { geoMercator, geoPath } from "d3-geo";
+import { geoGraticule10, geoMercator, geoPath } from "d3-geo";
 import { isVisited, type MapCountry } from "./countries";
 
 /** 描画関数が使う Canvas 2D コンテキストの機能。テストでは記録用のフェイクを渡す。 */
@@ -20,13 +20,18 @@ export type MapContext = Pick<
 
 export type MapSize = { readonly width: number; readonly height: number };
 
+/**
+ * 地図の配色。Canvas からは CSS 変数を読めないため値を直接持つ。
+ * docs/design-guidelines.md の「地図の配色」と一致させる（海は画面の背景色 --bg と同じにして地図の枠を見せない）。
+ */
 export const MAP_COLORS = {
-  background: "#0f172a",
-  ocean: "#1e293b",
-  unvisited: "#475569",
-  visited: "#f59e0b",
-  border: "#0f172a",
-  marker: "#f59e0b",
+  ocean: "#0b1019",
+  graticule: "rgba(255, 255, 255, 0.045)",
+  unvisited: "#232c3f",
+  visited: "#f2a93b",
+  border: "#0b1019",
+  marker: "#f2a93b",
+  markerRing: "rgba(242, 169, 59, 0.55)",
 } as const;
 
 /**
@@ -53,22 +58,37 @@ function mercatorY(latitude: number): number {
   return Math.log(Math.tan(Math.PI / 4 + (latitude * Math.PI) / 360));
 }
 
-/** 表示範囲の横:縦の比。地図を歪ませずに収める Canvas の大きさを決めるのに使う。 */
+/** 表示範囲の横:縦の比。地図を歪ませずに収める大きさを決めるのに使う。 */
 export const MAP_ASPECT_RATIO = (2 * Math.PI) / (mercatorY(NORTH_LIMIT) - mercatorY(SOUTH_LIMIT));
 
+type MapExtent = [[number, number], [number, number]];
+
+/**
+ * 描画領域の中で地図を置く範囲。縦横比を保ったまま領域に収まる最大の大きさにして中央に置く。
+ * 描画領域は画面の形（PC の横長、スマートフォンの縦長）に合わせて変わるため、余った部分は海の色で埋める。
+ */
+export function mapExtent(size: MapSize): MapExtent {
+  const width = Math.min(size.width, size.height * MAP_ASPECT_RATIO);
+  const height = width / MAP_ASPECT_RATIO;
+  const x0 = (size.width - width) / 2;
+  const y0 = (size.height - height) / 2;
+  return [
+    [x0, y0],
+    [x0 + width, y0 + height],
+  ];
+}
+
 function createProjection(size: MapSize) {
+  const extent = mapExtent(size);
   return geoMercator()
-    .fitSize([size.width, size.height], {
+    .fitExtent(extent, {
       type: "MultiPoint",
       coordinates: [
         [-180, NORTH_LIMIT],
         [180, SOUTH_LIMIT],
       ],
     })
-    .clipExtent([
-      [0, 0],
-      [size.width, size.height],
-    ]);
+    .clipExtent(extent);
 }
 
 /** 複数のポリゴンからなる国は、最大のポリゴンの重心を使う（飛び地にマーカーが寄らないようにする）。 */
@@ -135,13 +155,14 @@ export function drawWorldMap(
   const path = geoPath(createProjection(size), ctx);
   const plan = planWorldMap(size, countries, visited);
 
-  ctx.fillStyle = MAP_COLORS.background;
+  ctx.fillStyle = MAP_COLORS.ocean;
   ctx.fillRect(0, 0, size.width, size.height);
 
   ctx.beginPath();
-  path({ type: "Sphere" });
-  ctx.fillStyle = MAP_COLORS.ocean;
-  ctx.fill();
+  path(geoGraticule10());
+  ctx.strokeStyle = MAP_COLORS.graticule;
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   ctx.strokeStyle = MAP_COLORS.border;
   ctx.lineWidth = 0.5;
@@ -153,14 +174,19 @@ export function drawWorldMap(
     ctx.stroke();
   }
 
-  const markerRadius = Math.max(2, size.width / 400);
-  ctx.fillStyle = MAP_COLORS.marker;
-  ctx.strokeStyle = MAP_COLORS.background;
-  ctx.lineWidth = markerRadius / 2;
+  // マーカーは地図の幅に比例させ、動画の高解像度でも見え方を変えない
+  const [[x0], [x1]] = mapExtent(size);
+  const dotRadius = Math.max(3, (x1 - x0) / 330);
   for (const marker of plan.markers) {
     ctx.beginPath();
-    ctx.arc(marker.x, marker.y, markerRadius, 0, 2 * Math.PI);
-    ctx.fill();
+    ctx.arc(marker.x, marker.y, dotRadius * 2.2, 0, 2 * Math.PI);
+    ctx.strokeStyle = MAP_COLORS.markerRing;
+    ctx.lineWidth = dotRadius / 2;
     ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(marker.x, marker.y, dotRadius, 0, 2 * Math.PI);
+    ctx.fillStyle = MAP_COLORS.marker;
+    ctx.fill();
   }
 }

@@ -6,6 +6,7 @@ import {
   MAP_ASPECT_RATIO,
   MAP_COLORS,
   type MapContext,
+  mapExtent,
   planWorldMap,
 } from "./drawWorldMap";
 
@@ -106,13 +107,43 @@ describe("drawWorldMap", () => {
 
     drawWorldMap(ctx, size, countries, visited);
 
-    // 海 → 各国 → マーカーの順に塗られる
+    // 各国 → マーカーの順に塗られる（海は fillRect で全面を塗る）
     expect(fills).toEqual([
-      MAP_COLORS.ocean,
       ...plan.fills.map((f) => f.color),
       ...plan.markers.map(() => MAP_COLORS.marker),
     ]);
+    // マーカーは外側の輪と中心の点の2つの円で描く
     const sg = markerOf(plan, "SG");
-    expect(arcs).toEqual([{ x: sg.x, y: sg.y }]);
+    expect(arcs).toEqual([
+      { x: sg.x, y: sg.y },
+      { x: sg.x, y: sg.y },
+    ]);
+  });
+});
+
+describe("mapExtent", () => {
+  test("横長の領域では高さいっぱいに収め、左右中央に置く", () => {
+    const [[x0, y0], [x1, y1]] = mapExtent({ width: 2000, height: 500 });
+    expect(y0).toBeCloseTo(0);
+    expect(y1).toBeCloseTo(500);
+    expect(x1 - x0).toBeCloseTo(500 * MAP_ASPECT_RATIO);
+    expect(x0).toBeCloseTo(2000 - x1);
+  });
+
+  test("縦長の領域では幅いっぱいに収め、上下中央に置く", () => {
+    const [[x0, y0], [x1, y1]] = mapExtent({ width: 375, height: 700 });
+    expect(x0).toBeCloseTo(0);
+    expect(x1).toBeCloseTo(375);
+    expect(y1 - y0).toBeCloseTo(375 / MAP_ASPECT_RATIO);
+    expect(y0).toBeCloseTo(700 - y1);
+  });
+
+  test("縦長の領域でも国は地図の範囲内に描かれる", () => {
+    const tall = { width: 375, height: 700 };
+    const [[, y0], [, y1]] = mapExtent(tall);
+    const plan = planWorldMap(tall, countries, new Set(["SG"]));
+    const sg = markerOf(plan, "SG");
+    expect(sg.y).toBeGreaterThan(y0);
+    expect(sg.y).toBeLessThan(y1);
   });
 });
