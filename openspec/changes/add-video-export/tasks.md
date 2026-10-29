@@ -20,13 +20,13 @@
 
 ## 4. 統合確認
 
-- [ ] 4.1 ブランチを push し、プレビュー URL で PC Chrome・iPhone Safari・Android Chrome の書き出しを確認してもらう。確認する内容は次のとおり。
+- [x] 4.1 ブランチを push し、プレビュー URL で PC Chrome・iPhone Safari・Android Chrome の書き出しを確認してもらう。確認する内容は次のとおり。
   - 書き出した動画の形式（H.264）と、長さ・内容がプレビューと一致すること
   - 進捗の表示とキャンセル
   - 共有シートから写真アプリまたは Google フォトに保存して再生できること
   - PC ではダウンロードされること
   - DevTools の Network で、書き出し中に通信が発生しないこと
-- [ ] 4.2 4.1 で確認できた環境の結果（ほかの環境を試した場合はその結果も）を `docs/spikes/video-export.md` に追記する
+- [x] 4.2 4.1 で確認できた環境の結果（ほかの環境を試した場合はその結果も）を `docs/spikes/video-export.md` に追記する
 - [x] 4.3 `pnpm check` がすべて通ることを確認する
 - [x] 4.4 `openspec validate add-video-export --strict` が通ることを確認する
 
