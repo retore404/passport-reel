@@ -1,27 +1,40 @@
-import { useCallback, useMemo, useState } from "react";
-import { RecordForm } from "./records/RecordForm";
-import { RecordList } from "./records/RecordList";
+import { useState } from "react";
+import { RecordsScreen } from "./records/RecordsScreen";
 import { useVisitRecords } from "./records/useVisitRecords";
-import { visitedCountries } from "./records/visitRecords";
-import { Sheet } from "./Sheet";
+import { PreviewScreen } from "./timeline/PreviewScreen";
 import { useMediaQuery } from "./useMediaQuery";
-import { WorldMapCanvas } from "./WorldMapCanvas";
 
 /** PC とスマートフォンで画面構成を切り替える幅。docs/design-guidelines.md の「レイアウト」に対応する。 */
 const WIDE_QUERY = "(min-width: 768px)";
 
-export function App() {
-  const { records, persistent, add, remove } = useVisitRecords();
-  const isWide = useMediaQuery(WIDE_QUERY);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const closeSheet = useCallback(() => setSheetOpen(false), []);
-  // 地図は visited が変わるたびに描き直すため、入力中の再描画で作り直さないよう記録が変わったときだけ求める
-  const visited = useMemo(() => visitedCountries(records), [records]);
+type View = "records" | "preview";
 
-  const notice = !persistent && (
-    <output className="notice">
-      この端末では記録を保存できません。ページを閉じると記録は消えます。
-    </output>
+const VIEWS: readonly { readonly id: View; readonly label: string }[] = [
+  { id: "records", label: "記録" },
+  { id: "preview", label: "プレビュー" },
+];
+
+export function App() {
+  // 記録は画面を切り替えても保つため、各画面ではなくここで持つ
+  const visitRecords = useVisitRecords();
+  const isWide = useMediaQuery(WIDE_QUERY);
+  const [view, setView] = useState<View>("records");
+
+  // PC は上部バーの切り替えボタン、スマートフォンは画面下のタブで切り替える
+  const viewSwitch = (
+    <nav className={isWide ? "view-switch" : "tab-bar"} aria-label="画面の切り替え">
+      {VIEWS.map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          className={isWide ? "view-switch-button" : "tab-button"}
+          aria-current={view === id ? "page" : undefined}
+          onClick={() => setView(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </nav>
   );
 
   return (
@@ -31,55 +44,16 @@ export function App() {
           <span className="brand-logo" aria-hidden="true" />
           Passport Reel
         </h1>
+        {isWide && viewSwitch}
       </header>
-      <div className={isWide ? "records-wide" : "records-narrow"}>
-        {isWide && (
-          <aside className="records-panel" aria-label="訪問記録">
-            <RecordForm records={records} onAdd={add} layout="inline" />
-            {notice}
-            <div className="records-scroll">
-              <RecordList
-                records={records}
-                onRemove={remove}
-                emptyHint="上の入力欄で年と国を選んで追加してください。"
-              />
-            </div>
-          </aside>
+      <main className="view">
+        {view === "records" ? (
+          <RecordsScreen visitRecords={visitRecords} wide={isWide} />
+        ) : (
+          <PreviewScreen records={visitRecords.records} wide={isWide} />
         )}
-        <main className="map-stage">
-          <WorldMapCanvas visited={visited} />
-          <p className="visited-count">
-            <span className="visited-count-number">{visited.size}</span>
-            か国
-          </p>
-        </main>
-        {!isWide && (
-          <>
-            <section className="records-scroll" aria-label="訪問記録">
-              {notice}
-              <RecordList
-                records={records}
-                onRemove={remove}
-                emptyHint="「＋ 記録を追加」から訪れた国を登録してください。"
-              />
-            </section>
-            <div className="bottom-bar">
-              <button
-                type="button"
-                className="button button--primary button--block"
-                onClick={() => setSheetOpen(true)}
-              >
-                ＋ 記録を追加
-              </button>
-            </div>
-            {sheetOpen && (
-              <Sheet title="記録を追加" onClose={closeSheet}>
-                <RecordForm records={records} onAdd={add} layout="stacked" />
-              </Sheet>
-            )}
-          </>
-        )}
-      </div>
+      </main>
+      {!isWide && viewSwitch}
     </div>
   );
 }
