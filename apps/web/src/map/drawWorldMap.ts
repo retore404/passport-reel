@@ -32,6 +32,8 @@ export const MAP_COLORS = {
   border: "#0b1019",
   marker: "#f2a93b",
   markerRing: "rgba(242, 169, 59, 0.55)",
+  emphasized: "#ffd27a",
+  emphasizedGlow: "rgba(255, 210, 122, 0.85)",
 } as const;
 
 /**
@@ -189,4 +191,57 @@ export function drawWorldMap(
     ctx.fillStyle = MAP_COLORS.marker;
     ctx.fill();
   }
+}
+
+/** 強調描画で使う Canvas 2D コンテキストの機能。光彩（shadow）を扱う分だけ MapContext より多い。 */
+export type EmphasisContext = MapContext &
+  Pick<CanvasRenderingContext2D, "shadowBlur" | "shadowColor" | "save" | "restore">;
+
+function mixColor(from: string, to: string, ratio: number): string {
+  const channels = (hex: string) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+  const a = channels(from);
+  const b = channels(to);
+  const mixed = a.map((value, i) => Math.round(value + ((b[i] ?? value) - value) * ratio));
+  return `rgb(${mixed.join(", ")})`;
+}
+
+/**
+ * 指定した国を強調色と光彩で、描画済みの地図の上に描き重ねる（プレビューで「その年に初めて訪れた国」を示す）。
+ * strength（0〜1）でハイライト色から強調色への変化と光彩の強さを決め、0 では光彩を付けない。
+ * shadowBlur は座標変換の拡大縮小を受けないため、1 単位あたりの実ピクセル数を pixelScale で受け取って掛ける。
+ */
+export function drawEmphasizedCountries(
+  ctx: EmphasisContext,
+  size: MapSize,
+  countries: readonly MapCountry[],
+  codes: ReadonlySet<string>,
+  strength: number,
+  pixelScale = 1,
+): void {
+  if (codes.size === 0) {
+    return;
+  }
+  const path = geoPath(createProjection(size), ctx);
+  const plan = planWorldMap(size, countries, codes);
+  const color = mixColor(MAP_COLORS.visited, MAP_COLORS.emphasized, strength);
+  const [[x0], [x1]] = mapExtent(size);
+
+  ctx.save();
+  ctx.shadowColor = MAP_COLORS.emphasizedGlow;
+  ctx.shadowBlur = strength * ((x1 - x0) / 60) * pixelScale;
+  ctx.fillStyle = color;
+  for (const { country } of plan.fills) {
+    if (isVisited(country, codes)) {
+      ctx.beginPath();
+      path(country.feature);
+      ctx.fill();
+    }
+  }
+  const dotRadius = Math.max(3, (x1 - x0) / 330);
+  for (const marker of plan.markers) {
+    ctx.beginPath();
+    ctx.arc(marker.x, marker.y, dotRadius * 1.4, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+  ctx.restore();
 }

@@ -2,7 +2,9 @@ import { describe, expect, test } from "vitest";
 import topology from "world-atlas/countries-50m.json";
 import { toMapCountries } from "./countries";
 import {
+  drawEmphasizedCountries,
   drawWorldMap,
+  type EmphasisContext,
   MAP_ASPECT_RATIO,
   MAP_COLORS,
   type MapContext,
@@ -118,6 +120,54 @@ describe("drawWorldMap", () => {
       { x: sg.x, y: sg.y },
       { x: sg.x, y: sg.y },
     ]);
+  });
+});
+
+/** fill の呼び出しを、その時点の塗り色と光彩の強さとともに記録するフェイクのコンテキスト。 */
+function createEmphasisRecordingContext() {
+  const { ctx: base, arcs } = createRecordingContext();
+  const fills: { color: EmphasisContext["fillStyle"]; blur: number }[] = [];
+  const ctx: EmphasisContext = {
+    ...base,
+    shadowBlur: 0,
+    shadowColor: "",
+    save: () => {},
+    restore: () => {},
+    fill: () => {
+      fills.push({ color: ctx.fillStyle, blur: ctx.shadowBlur });
+    },
+  };
+  return { ctx, fills, arcs };
+}
+
+describe("drawEmphasizedCountries", () => {
+  const featureCount = (alpha2: string) => countries.filter((c) => c.alpha2 === alpha2).length;
+
+  test("指定した国だけを強調色で塗り、強さに応じて光彩を付ける", () => {
+    const { ctx, fills } = createEmphasisRecordingContext();
+    drawEmphasizedCountries(ctx, size, countries, new Set(["FR"]), 1);
+    expect(fills).toHaveLength(featureCount("FR"));
+    expect(fills.every((f) => f.color === "rgb(255, 210, 122)" && f.blur > 0)).toBe(true);
+  });
+
+  test("強さ 0 ではハイライト色のままで光彩がない", () => {
+    const { ctx, fills } = createEmphasisRecordingContext();
+    drawEmphasizedCountries(ctx, size, countries, new Set(["FR"]), 0);
+    expect(fills.every((f) => f.color === "rgb(242, 169, 59)" && f.blur === 0)).toBe(true);
+  });
+
+  test("小さな国には強調色のマーカーを描く", () => {
+    const { ctx, fills, arcs } = createEmphasisRecordingContext();
+    drawEmphasizedCountries(ctx, size, countries, new Set(["SG"]), 1);
+    const sg = markerOf(planWorldMap(size, countries, new Set(["SG"])), "SG");
+    expect(arcs).toEqual([{ x: sg.x, y: sg.y }]);
+    expect(fills.at(-1)?.color).toBe("rgb(255, 210, 122)");
+  });
+
+  test("国の指定がなければ何も描かない", () => {
+    const { ctx, fills } = createEmphasisRecordingContext();
+    drawEmphasizedCountries(ctx, size, countries, new Set(), 1);
+    expect(fills).toHaveLength(0);
   });
 });
 

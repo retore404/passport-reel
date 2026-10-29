@@ -47,6 +47,7 @@ body {
   display: flex;
   flex: none;
   align-items: center;
+  justify-content: space-between;
   height: 52px;
   padding: 0 16px;
   border-bottom: 1px solid var(--line);
@@ -311,6 +312,11 @@ select.control {
   color: var(--on-accent);
 }
 
+.button--secondary {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
 .button:disabled {
   opacity: 0.45;
   cursor: default;
@@ -442,4 +448,201 @@ select.control {
 .sheet-header h2 {
   margin: 0;
   font-size: 15px;
+}
+
+/* 画面（記録・プレビュー）を置く領域。上部バーとタブを除いた残りすべて */
+.view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 画面の切り替え（PC）: 上部バー右の切り替えボタン */
+.view-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+}
+
+.view-switch-button {
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-switch-button[aria-current="page"] {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* 画面の切り替え（スマートフォン）: 画面下のタブ */
+.tab-bar {
+  display: flex;
+  flex: none;
+  height: 64px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.tab-button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-button[aria-current="page"] {
+  color: var(--accent);
+}
+
+.view-switch-button:focus-visible,
+.tab-button:focus-visible,
+.frame-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* プレビュー（PC）: 中央に 9:16 のプレビュー、右にコマの一覧 */
+.preview-wide {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.preview-narrow {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.preview-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* 9:16 のコマを、縦横比を保って収まる最大の大きさで中央に置く */
+.preview-stage {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  place-items: center;
+}
+
+.preview-canvas {
+  display: block;
+  border-radius: var(--radius-m);
+}
+
+.preview-controls {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.preview-toggle {
+  min-width: 72px;
+}
+
+.preview-seek {
+  flex: 1;
+  min-width: 120px;
+  accent-color: var(--accent);
+}
+
+.preview-time {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-panel {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 320px;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.panel-heading {
+  margin: 0;
+  padding: 16px 16px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.frame-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0 8px 16px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.frame-item {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.frame-item:hover {
+  background: var(--surface-2);
+}
+
+.frame-item[aria-current="step"] {
+  background: rgba(242, 169, 59, 0.12);
+  color: var(--accent-strong);
+}
+
+.frame-item-count {
+  color: var(--muted);
+}
+
+.preview-empty {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  padding: 24px 16px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.preview-empty p {
+  margin: 0 0 4px;
 }
