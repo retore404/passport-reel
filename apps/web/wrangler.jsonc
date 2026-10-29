@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Workers Builds（Cloudflare の Git 連携）がこの設定でデプロイする。
+  // 公開リポジトリのため、秘密情報は vars に書かず wrangler secret かダッシュボードの Secrets で設定する。
+  "name": "passport-reel",
+  "compatibility_date": "2026-10-22",
+  // サーバー処理を持たない静的サイトのため、Worker スクリプト（main）は置かずビルド結果だけを配信する。
+  "assets": {
+    "directory": "./dist",
+  },
+}

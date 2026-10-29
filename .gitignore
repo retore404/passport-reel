@@ -7,3 +7,4 @@ tmpwork/
 CLAUDE.local.md
 .pnpm-store
 dist/
+.wrangler/
