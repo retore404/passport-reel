@@ -33,3 +33,9 @@ export function frameAt(timeline: Timeline, t: number): FrameState {
   }
   return { kind: "summary", elapsed: clamped - timeline.years.length * YEAR_SECONDS };
 }
+
+/** 秒を m:ss で表す。 */
+export function formatTime(seconds: number): string {
+  const whole = Math.floor(seconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+}

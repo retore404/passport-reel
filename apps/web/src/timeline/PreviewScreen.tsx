@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ExportPanel } from "../export/ExportPanel";
+import { useVideoExport } from "../export/useVideoExport";
 import { loadMapCountries, type MapCountry } from "../map/countries";
 import type { VisitRecord } from "../records/visitRecords";
 import { drawFrame, FRAME_HEIGHT, FRAME_WIDTH } from "./drawFrame";
 import { createMapLayers } from "./mapLayers";
 import { buildTimeline, type Timeline } from "./timeline";
-import { frameAt, frameStartTimes, totalDuration } from "./timing";
+import { Sheet } from "../Sheet";
+import { formatTime, frameAt, frameStartTimes, totalDuration } from "./timing";
 import { usePlayback } from "./usePlayback";
 
 type Props = {
@@ -12,11 +15,6 @@ type Props = {
   /** PC 幅ではコマの一覧を右のパネルに出す。 */
   readonly wide: boolean;
 };
-
-function formatTime(seconds: number): string {
-  const whole = Math.floor(seconds);
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
-}
 
 /** 記録から作ったタイムラインを 9:16 で再生するプレビュー画面。 */
 export function PreviewScreen({ records, wide }: Props) {
@@ -44,6 +42,17 @@ function TimelinePlayer({
   const frame = frameAt(timeline, playback.time);
   const currentIndex = frame.kind === "year" ? frame.index : timeline.years.length;
   const starts = frameStartTimes(timeline);
+  const videoExport = useVideoExport(timeline);
+  const [exportSheetOpen, setExportSheetOpen] = useState(false);
+  const { cancel } = videoExport;
+  // 書き出し中にシートを閉じたら、見えないところで重い処理を続けないよう書き出しをキャンセルする
+  const closeExportSheet = useCallback(() => {
+    cancel();
+    setExportSheetOpen(false);
+  }, [cancel]);
+  const exportPanel = (
+    <ExportPanel timeline={timeline} videoExport={videoExport} onStart={playback.pause} />
+  );
 
   return (
     <div className={wide ? "preview-wide" : "preview-narrow"}>
@@ -74,10 +83,24 @@ function TimelinePlayer({
           <span className="preview-time">
             {formatTime(playback.time)} / {formatTime(duration)}
           </span>
+          {!wide && (
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => setExportSheetOpen(true)}
+            >
+              書き出す
+            </button>
+          )}
         </div>
+        {!wide && exportSheetOpen && (
+          <Sheet title="動画を書き出す" onClose={closeExportSheet}>
+            {exportPanel}
+          </Sheet>
+        )}
       </div>
       {wide && (
-        <aside className="preview-panel" aria-label="コマの一覧">
+        <aside className="preview-panel" aria-label="コマと書き出し">
           <h2 className="panel-heading">コマ</h2>
           <ol className="frame-list">
             {[...timeline.years.map((entry) => `${entry.year}`), "まとめ"].map((label, index) => (
@@ -98,6 +121,7 @@ function TimelinePlayer({
               </li>
             ))}
           </ol>
+          <div className="preview-panel-export">{exportPanel}</div>
         </aside>
       )}
     </div>
