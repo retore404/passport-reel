@@ -51,7 +51,12 @@ function TimelinePlayer({
     setExportSheetOpen(false);
   }, [cancel]);
   const exportPanel = (
-    <ExportPanel timeline={timeline} videoExport={videoExport} onStart={playback.pause} />
+    <ExportPanel
+      timeline={timeline}
+      videoExport={videoExport}
+      onStart={playback.pause}
+      wide={wide}
+    />
   );
 
   return (

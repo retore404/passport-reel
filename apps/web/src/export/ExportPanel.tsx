@@ -3,7 +3,7 @@ import { FRAME_HEIGHT, FRAME_WIDTH } from "../timeline/drawFrame";
 import type { Timeline } from "../timeline/timeline";
 import { formatTime, totalDuration } from "../timeline/timing";
 import { progressText } from "./frames";
-import { saveVideo } from "./saveVideo";
+import { canShareFile, downloadVideo, shareVideo } from "./saveVideo";
 import type { VideoExport } from "./useVideoExport";
 
 type Props = {
@@ -11,16 +11,12 @@ type Props = {
   readonly videoExport: VideoExport;
   /** 書き出しを始めるときに呼ぶ（プレビューの再生を止めるため）。 */
   readonly onStart: () => void;
+  /** PC 幅ではダウンロード、スマートフォン幅では共有を主な操作として強調する。 */
+  readonly wide: boolean;
 };
 
-const SAVE_MESSAGES = {
-  shared: "共有しました。",
-  downloaded: "ダウンロードしました。",
-  dismissed: undefined,
-} as const;
-
 /** 動画の書き出しボタンと、書き出し中の進捗・完了・非対応・失敗の表示。 */
-export function ExportPanel({ timeline, videoExport, onStart }: Props) {
+export function ExportPanel({ timeline, videoExport, onStart, wide }: Props) {
   const { state, start, cancel, reset } = videoExport;
   const [saveMessage, setSaveMessage] = useState<string>();
 
@@ -97,18 +93,7 @@ export function ExportPanel({ timeline, videoExport, onStart }: Props) {
         <dt>形式</dt>
         <dd>{format.label}</dd>
       </dl>
-      <button
-        type="button"
-        className="button button--primary button--block"
-        onClick={() => {
-          saveVideo(file, navigator).then(
-            (result) => setSaveMessage(SAVE_MESSAGES[result]),
-            (error: unknown) => setSaveMessage(`保存できませんでした（${String(error)}）。`),
-          );
-        }}
-      >
-        共有・保存
-      </button>
+      <SaveButtons file={file} wide={wide} onMessage={setSaveMessage} />
       {saveMessage && <output className="export-detail">{saveMessage}</output>}
       <button
         type="button"
@@ -122,4 +107,53 @@ export function ExportPanel({ timeline, videoExport, onStart }: Props) {
       </button>
     </div>
   );
+}
+
+/**
+ * 書き出した動画の保存操作。ダウンロードは常に出し、共有は共有シートを開ける環境でだけ出す。
+ * PC の共有シートには保存の選択肢がないため、共有をダウンロードの代わりにはしない。
+ */
+function SaveButtons({
+  file,
+  wide,
+  onMessage,
+}: {
+  readonly file: File;
+  readonly wide: boolean;
+  readonly onMessage: (message: string | undefined) => void;
+}) {
+  const shareable = canShareFile(file, navigator);
+  const download = (
+    <button
+      key="download"
+      type="button"
+      className={`button button--block ${wide || !shareable ? "button--primary" : "button--secondary"}`}
+      onClick={() => {
+        downloadVideo(file);
+        onMessage("ダウンロードしました。");
+      }}
+    >
+      ダウンロード
+    </button>
+  );
+  if (!shareable) {
+    return download;
+  }
+  const share = (
+    <button
+      key="share"
+      type="button"
+      className={`button button--block ${wide ? "button--secondary" : "button--primary"}`}
+      onClick={() => {
+        shareVideo(file, navigator).then(
+          (shared) => onMessage(shared ? "共有しました。" : undefined),
+          (error: unknown) => onMessage(`共有できませんでした（${String(error)}）。`),
+        );
+      }}
+    >
+      共有
+    </button>
+  );
+  // 主な操作を上に置く
+  return wide ? [download, share] : [share, download];
 }
