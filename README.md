@@ -14,6 +14,7 @@
 | `apps/web` | Web アプリ本体（Vite + React + TypeScript、フロントエンドのみ）。`pnpm --filter ./apps/web build` で `apps/web/dist` に静的ファイルを出力し、Cloudflare Workers で配信する |
 | `openspec/` | 仕様と変更提案（OpenSpec） |
 | `docs/design-guidelines.md` | 見た目の方針（配色、書体、レイアウト、地図の配色、将来の画面の指針） |
+| `docs/spikes/` | スパイク（技術検証）の結果と、それに基づく判断 |
 | `.agents/skills/` | コーディングエージェント用 skills（`.claude/skills` から symlink） |
 
 ## コマンド
