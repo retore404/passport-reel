@@ -1,0 +1,85 @@
+/* issue #4 の動画書き出しスパイクの検証ページ用。本番アプリには含めない（spike ブランチのみ）。 */
+.spike {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.spike h1 {
+  font-size: 18px;
+}
+
+.spike h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.spike-muted {
+  color: var(--muted);
+}
+
+.spike-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.spike button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
+}
+
+.spike button:disabled {
+  opacity: 0.5;
+}
+
+.spike-canvas {
+  display: block;
+  width: 160px;
+  border: 1px solid var(--line);
+}
+
+.spike-card {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.spike-error {
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+.spike-manual {
+  display: grid;
+  gap: 8px;
+}
+
+.spike-manual label {
+  display: grid;
+  gap: 4px;
+}
+
+.spike-manual select,
+.spike-manual input {
+  padding: 6px;
+  font: inherit;
+}
+
+.spike-env {
+  overflow-x: auto;
+  padding: 12px;
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  font-size: 11px;
+  white-space: pre;
+}
