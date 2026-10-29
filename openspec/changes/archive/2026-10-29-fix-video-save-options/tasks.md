@@ -11,7 +11,7 @@
 
 ## 3. 統合確認
 
-- [ ] 3.1 ブランチを push し、プレビュー URL で確認してもらう。Windows + Chrome では、「ダウンロード」で動画を保存して再生できること。iPhone Safari では、「共有」から写真アプリに保存できること
+- [x] 3.1 ブランチを push し、プレビュー URL で確認してもらう。Windows + Chrome では、「ダウンロード」で動画を保存して再生できること。iPhone Safari では、「共有」から写真アプリに保存できること
 - [x] 3.2 `pnpm check` がすべて通ることを確認する
 - [x] 3.3 `openspec validate fix-video-save-options --strict` が通ることを確認する
 
