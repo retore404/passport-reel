@@ -12,6 +12,7 @@ Passport Reel is an app that visualizes the countries the user has visited in ch
   - `pnpm --filter ./apps/web build` builds it into `apps/web/dist`.
   - Deployed to Cloudflare Workers as static assets via Workers Builds (`apps/web/wrangler.jsonc`). See `README.md` for the build settings.
 - `docs/design-guidelines.md`: The visual design guidelines (design tokens, map colors, layout, guidance for future screens). Follow it when adding or changing UI, and update it when changing the design direction.
+- `docs/spikes/`: Results of technical spikes and the decisions based on them (e.g. `video-export.md` decides the video export formats and fallback order). Follow them when implementing the related features.
 - When adding a workspace package, register it in `pnpm-workspace.yaml` and `vitest.config.ts` (`test.projects`), and update this section and `README.md`.
 
 ## Communication
