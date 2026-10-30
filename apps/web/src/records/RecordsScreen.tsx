@@ -76,7 +76,7 @@ export function RecordsScreen({ visitRecords, wide }: Props) {
         </button>
       </div>
       {sheetOpen && (
-        <Sheet title="記録を追加" onClose={closeSheet}>
+        <Sheet title="記録を追加" onClose={closeSheet} tall>
           <RecordForm records={records} onAdd={add} layout="stacked" />
         </Sheet>
       )}

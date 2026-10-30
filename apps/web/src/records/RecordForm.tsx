@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type SubmitEvent, useId, useRef, useState } from "react";
+import { isImeConfirmingEnter, soleSelectableCandidate } from "./candidates";
 import { type CountryName, searchCountries } from "./countryNames";
 import { hasRecord, MIN_YEAR, type VisitRecord } from "./visitRecords";
 
@@ -15,6 +16,7 @@ const YEARS = Array.from({ length: currentYear - MIN_YEAR + 1 }, (_, i) => curre
 /**
  * 年と国を選んで訪問記録を追加する入力欄。
  * 国の候補はネイティブのボタンで並べ、国の欄で↓を押すと候補へ移り、↑↓で候補間を移動して Enter で選ぶ。
+ * 選べる候補が 1 か国だけのときは、その国を強調し、選ばずに国の欄の Enter（フォームの送信）や追加ボタンで追加できる。
  * 追加後は続けて同じ年の国を登録できるよう、国の欄だけを空にして年は残す。
  */
 export function RecordForm({ records, onAdd, layout }: Props) {
@@ -29,6 +31,8 @@ export function RecordForm({ records, onAdd, layout }: Props) {
   const showList = !selected && query.trim() !== "";
   const isAdded = (code: string) => hasRecord(records, { year, country: code });
   const selectedIsAdded = selected !== undefined && isAdded(selected.code);
+  const sole = soleSelectableCandidate(candidates, isAdded);
+  const countryToAdd = selected ?? sole;
 
   function choose(country: CountryName) {
     setSelected(country);
@@ -38,10 +42,10 @@ export function RecordForm({ records, onAdd, layout }: Props) {
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected || selectedIsAdded) {
+    if (!countryToAdd || isAdded(countryToAdd.code)) {
       return;
     }
-    onAdd({ year, country: selected.code });
+    onAdd({ year, country: countryToAdd.code });
     setSelected(undefined);
     setQuery("");
     inputRef.current?.focus();
@@ -85,21 +89,39 @@ export function RecordForm({ records, onAdd, layout }: Props) {
 
       <div className="field field--country">
         <label htmlFor={`${id}-country`}>国</label>
-        <input
-          ref={inputRef}
-          id={`${id}-country`}
-          className="control"
-          type="text"
-          autoComplete="off"
-          placeholder="国名で検索"
-          aria-describedby={showList ? `${id}-candidates-label` : undefined}
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setSelected(undefined);
-          }}
-          onKeyDown={(event) => showList && moveFocus(event, null)}
-        />
+        <div className="country-row">
+          <input
+            ref={inputRef}
+            id={`${id}-country`}
+            className="control"
+            type="text"
+            autoComplete="off"
+            placeholder="国名で検索"
+            aria-describedby={showList ? `${id}-candidates-label` : undefined}
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setSelected(undefined);
+            }}
+            onKeyDown={(event) => {
+              // 変換確定の Enter でフォームが送信され、意図せず記録が追加されるのを防ぐ
+              if (isImeConfirmingEnter(event.nativeEvent)) {
+                event.preventDefault();
+                return;
+              }
+              if (showList) {
+                moveFocus(event, null);
+              }
+            }}
+          />
+          <button
+            className="button button--primary"
+            type="submit"
+            disabled={!countryToAdd || selectedIsAdded}
+          >
+            追加
+          </button>
+        </div>
         {showList && (
           <div className="candidates">
             <p id={`${id}-candidates-label`} className="candidates-label">
@@ -112,7 +134,7 @@ export function RecordForm({ records, onAdd, layout }: Props) {
                   <li key={country.code}>
                     <button
                       type="button"
-                      className="candidate"
+                      className={country === sole ? "candidate candidate--sole" : "candidate"}
                       disabled={added}
                       onClick={() => choose(country)}
                       onKeyDown={(event) => moveFocus(event, event.currentTarget)}
@@ -129,13 +151,6 @@ export function RecordForm({ records, onAdd, layout }: Props) {
         )}
       </div>
 
-      <button
-        className="button button--primary"
-        type="submit"
-        disabled={!selected || selectedIsAdded}
-      >
-        追加
-      </button>
       {selectedIsAdded && (
         <p className="form-note">
           {year} 年の {selected.name} は追加済みです
