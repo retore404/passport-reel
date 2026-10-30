@@ -183,7 +183,7 @@ body {
 }
 
 .record-form--inline {
-  grid-template-columns: 88px 1fr auto;
+  grid-template-columns: 88px 1fr;
   align-items: end;
 }
 
@@ -203,6 +203,7 @@ body {
   font-size: 12px;
 }
 
+/* iOS Safari は 16px 未満の入力欄を選ぶと画面を拡大するため、入力欄の文字は本文より大きい 16px にする */
 .control {
   box-sizing: border-box;
   width: 100%;
@@ -213,6 +214,14 @@ body {
   background: var(--bg);
   color: var(--text);
   font: inherit;
+  font-size: 16px;
+}
+
+/* 国の欄と追加ボタンの行。キーボードを出しても追加ボタンが国の欄と一緒に見えるよう横に並べる */
+.country-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
 }
 
 .control:focus-visible,
@@ -259,9 +268,28 @@ select.control {
   font-size: 11px;
 }
 
-/* シートの中では候補を浮かせず、入力欄の下に並べる（シートの下端で切れないように） */
+/*
+ * シートの中では候補を浮かせず、入力欄の下でシートの残りの高さを使ってスクロールさせる。
+ * キーボードに隠れるのは候補リストの下側だけになり、入力欄と追加ボタンは常に見える。
+ */
+.record-form--stacked {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.record-form--stacked .field--country {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .record-form--stacked .candidates {
   position: static;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .candidate {
@@ -282,6 +310,12 @@ select.control {
 .candidate:focus-visible {
   outline: none;
   background: rgba(242, 169, 59, 0.12);
+}
+
+/* 選べる候補が 1 か国だけのとき、Enter や追加ボタンで追加される国を示す */
+.candidate--sole {
+  background: rgba(242, 169, 59, 0.16);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .candidate:disabled {
@@ -437,6 +471,21 @@ select.control {
   display: grid;
   gap: 12px;
   padding: 12px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+/*
+ * 記録の追加シートは最初から背を高くして入力欄を画面の上寄りに置き、キーボードに隠れないようにする。
+ * iOS Safari のキーボードの位置を visualViewport で追う方法は不具合が多いため採らない。
+ */
+.sheet--tall {
+  height: 85dvh;
+}
+
+.sheet--tall .sheet-body {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  height: 100%;
 }
 
 .sheet-header {

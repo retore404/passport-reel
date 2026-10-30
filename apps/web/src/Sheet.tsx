@@ -3,6 +3,8 @@ import { type ReactNode, useEffect, useId, useRef } from "react";
 type Props = {
   readonly title: string;
   readonly onClose: () => void;
+  /** 中身の量によらず画面の高さの 85% で開く。キーボードに隠れないよう入力欄を画面の上寄りに置きたいときに使う。 */
+  readonly tall?: boolean;
   readonly children: ReactNode;
 };
 
@@ -10,7 +12,7 @@ type Props = {
  * 画面下から出るシート。ネイティブの dialog をモーダルで開き、フォーカスの閉じ込めと Esc での閉じる動作をブラウザに任せる。
  * 背後（::backdrop）のタップと閉じるボタンでも閉じる。開いたときは中の文字入力欄にフォーカスを移す。
  */
-export function Sheet({ title, onClose, children }: Props) {
+export function Sheet({ title, onClose, tall = false, children }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -37,7 +39,7 @@ export function Sheet({ title, onClose, children }: Props) {
   return (
     <dialog
       ref={dialogRef}
-      className="sheet"
+      className={tall ? "sheet sheet--tall" : "sheet"}
       aria-labelledby={titleId}
       onCancel={(event) => {
         // Esc での閉じる動作も親の状態を通して行い、開閉の状態を一か所で持つ
