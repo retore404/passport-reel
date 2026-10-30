@@ -4,11 +4,12 @@ import { useVideoExport } from "../export/useVideoExport";
 import { loadMapCountries, type MapCountry } from "../map/countries";
 import type { VisitRecord } from "../records/visitRecords";
 import { createNameTagMeasure, drawFrame, FRAME_HEIGHT, FRAME_WIDTH } from "./drawFrame";
+import { currentFrameListIndex, frameListItems } from "./frameList";
 import { createMapLayers } from "./mapLayers";
 import { buildReel, type Reel } from "./reel";
 import { buildTimeline, type Timeline } from "./timeline";
 import { Sheet } from "../Sheet";
-import { formatTime, frameAt, frameStartTimes, totalDuration } from "./timing";
+import { formatTime, frameAt, totalDuration } from "./timing";
 import { usePlayback } from "./usePlayback";
 
 type Props = {
@@ -43,8 +44,7 @@ function TimelinePlayer({
   const duration = totalDuration(reel);
   const playback = usePlayback(duration);
   const frame = frameAt(reel, playback.time);
-  const currentIndex = frame.kind === "year" ? frame.index : timeline.years.length;
-  const starts = frameStartTimes(reel);
+  const currentIndex = currentFrameListIndex(reel, frame);
   const videoExport = useVideoExport(reel);
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const { cancel } = videoExport;
@@ -106,20 +106,16 @@ function TimelinePlayer({
         <aside className="preview-panel" aria-label="コマと書き出し">
           <h2 className="panel-heading">コマ</h2>
           <ol className="frame-list">
-            {[...timeline.years.map((entry) => `${entry.year}`), "まとめ"].map((label, index) => (
-              <li key={label}>
+            {frameListItems(reel).map((item, index) => (
+              <li key={item.label}>
                 <button
                   type="button"
                   className="frame-item"
                   aria-current={index === currentIndex ? "step" : undefined}
-                  onClick={() => playback.seek(starts[index] ?? 0)}
+                  onClick={() => playback.seek(item.time)}
                 >
-                  <span>{label}</span>
-                  <span className="frame-item-count">
-                    {index < timeline.years.length
-                      ? `+${timeline.years[index]?.newCountries.length ?? 0}`
-                      : `${timeline.summary.countries.length} か国`}
-                  </span>
+                  <span>{item.label}</span>
+                  <span className="frame-item-count">{item.count}</span>
                 </button>
               </li>
             ))}

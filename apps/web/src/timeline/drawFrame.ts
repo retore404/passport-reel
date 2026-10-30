@@ -4,10 +4,14 @@ import type { MapLayers } from "./mapLayers";
 import type { Reel } from "./reel";
 import { layoutPageTags, layoutYearTags, type Measure, NAME_TAGS, type Tag } from "./textLayout";
 import {
+  EMPHASIS_SECONDS,
   flipSeconds,
   type FrameState,
   frameStartTimes,
+  LIST_FADE_SECONDS,
+  PAGE_TRANSITION_SECONDS,
   summaryPageAt,
+  TEXT_FADE_SECONDS,
   totalDuration,
 } from "./timing";
 
@@ -55,12 +59,10 @@ const LAYOUT = {
   progressY: 1790,
 } as const;
 
-/** コマの中のアニメーションの長さ（秒）。年のコマでは、めくりが終わってから数える。 */
-const TEXT_FADE_SECONDS = 0.3;
-const EMPHASIS_SECONDS = 0.6;
-const LIST_FADE_SECONDS = 0.5;
-const PAGE_TRANSITION_SECONDS = 0.4;
-/** ページを切り替えるときに縦へ動かす量 */
+/**
+ * ページを切り替えるときに縦へ動かす量。
+ * アニメーションの長さは、コマの一覧の移動先の計算にも使うため timing.ts に置く。
+ */
 const PAGE_SHIFT = 60;
 
 export type FrameContext = Parameters<MapLayers["draw"]>[0] &
