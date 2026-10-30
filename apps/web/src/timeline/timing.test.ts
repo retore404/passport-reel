@@ -1,7 +1,18 @@
 import { describe, expect, test } from "vitest";
 import type { Reel } from "./reel";
 import { buildTimeline, type Timeline } from "./timeline";
-import { flipSeconds, frameAt, frameStartTimes, summaryPageAt, totalDuration } from "./timing";
+import {
+  EMPHASIS_SECONDS,
+  flipSeconds,
+  frameAt,
+  frameJumpTimes,
+  frameStartTimes,
+  LIST_FADE_SECONDS,
+  PAGE_TRANSITION_SECONDS,
+  summaryPageAt,
+  TEXT_FADE_SECONDS,
+  totalDuration,
+} from "./timing";
 
 function timelineOf(records: Parameters<typeof buildTimeline>[0]): Timeline {
   const timeline = buildTimeline(records);
@@ -34,6 +45,52 @@ describe("totalDuration", () => {
 describe("frameStartTimes", () => {
   test("年のコマとまとめのコマの開始時刻", () => {
     expect(frameStartTimes(threeYears())).toEqual([0, 2, 4, 6]);
+  });
+});
+
+describe("frameJumpTimes", () => {
+  const reel = threeYears();
+  const jumps = frameJumpTimes(reel);
+
+  test("最初の年はめくらないので、開始時刻から強調が終わるまで（0.6 秒）進める", () => {
+    expect(jumps[0]).toBeCloseTo(0.6);
+  });
+
+  test("2 年目以降は、めくり（0.9 秒）と強調（0.6 秒）が終わるまで進める", () => {
+    expect(jumps[1]).toBeCloseTo(2 + 0.9 + 0.6);
+    expect(jumps[2]).toBeCloseTo(4 + 0.9 + 0.6);
+  });
+
+  test("まとめは国名の 1 ページ目のフェードイン（0.5 秒）が終わるまで進める", () => {
+    expect(jumps[3]).toBeCloseTo(6 + LIST_FADE_SECONDS);
+    expect(frameAt(reel, jumps[3] ?? 0)).toEqual({ kind: "summary", elapsed: LIST_FADE_SECONDS });
+  });
+
+  test("まとめが 1 ページなら、まとめの移動先は 1 つ", () => {
+    expect(jumps).toHaveLength(4);
+  });
+
+  test("まとめが複数ページなら、ページごとに切り替わり（0.4 秒）が終わった時刻へ移動する", () => {
+    const pages = threeYears(3);
+    const summaryJumps = frameJumpTimes(pages).slice(3);
+    expect(summaryJumps).toHaveLength(3);
+    expect(summaryJumps[0]).toBeCloseTo(6 + LIST_FADE_SECONDS);
+    expect(summaryJumps[1]).toBeCloseTo(6 + 2.5 + PAGE_TRANSITION_SECONDS);
+    expect(summaryJumps[2]).toBeCloseTo(6 + 5 + PAGE_TRANSITION_SECONDS);
+    summaryJumps.forEach((time, page) => {
+      const frame = frameAt(pages, time);
+      expect(frame.kind === "summary" && summaryPageAt(pages, frame.elapsed).page).toBe(page);
+    });
+  });
+
+  test("移動先では、そのコマの年のめくりと演出が終わっている", () => {
+    reel.timeline.years.forEach((_, index) => {
+      const frame = frameAt(reel, jumps[index] ?? 0);
+      expect(frame).toMatchObject({ kind: "year", index });
+      expect(frame.elapsed).toBeGreaterThanOrEqual(
+        flipSeconds(reel.timeline, index) + Math.max(TEXT_FADE_SECONDS, EMPHASIS_SECONDS),
+      );
+    });
   });
 });
 
