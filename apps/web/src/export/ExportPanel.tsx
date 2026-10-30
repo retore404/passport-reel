@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { FRAME_HEIGHT, FRAME_WIDTH } from "../timeline/drawFrame";
-import type { Timeline } from "../timeline/timeline";
+import type { Reel } from "../timeline/reel";
 import { formatTime, totalDuration } from "../timeline/timing";
 import { progressText } from "./frames";
 import { canShareFile, downloadVideo, shareVideo } from "./saveVideo";
 import type { VideoExport } from "./useVideoExport";
 
 type Props = {
-  readonly timeline: Timeline;
+  readonly reel: Reel;
   readonly videoExport: VideoExport;
   /** 書き出しを始めるときに呼ぶ（プレビューの再生を止めるため）。 */
   readonly onStart: () => void;
@@ -16,7 +16,7 @@ type Props = {
 };
 
 /** 動画の書き出しボタンと、書き出し中の進捗・完了・非対応・失敗の表示。 */
-export function ExportPanel({ timeline, videoExport, onStart, wide }: Props) {
+export function ExportPanel({ reel, videoExport, onStart, wide }: Props) {
   const { state, start, cancel, reset } = videoExport;
   const [saveMessage, setSaveMessage] = useState<string>();
 
@@ -85,7 +85,7 @@ export function ExportPanel({ timeline, videoExport, onStart, wide }: Props) {
         <dt>ファイル名</dt>
         <dd>{file.name}</dd>
         <dt>長さ</dt>
-        <dd>{formatTime(totalDuration(timeline))}</dd>
+        <dd>{formatTime(totalDuration(reel))}</dd>
         <dt>解像度</dt>
         <dd>
           {FRAME_WIDTH}×{FRAME_HEIGHT}

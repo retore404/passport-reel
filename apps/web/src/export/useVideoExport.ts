@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef } from "react";
 import { loadMapCountries } from "../map/countries";
-import type { Timeline } from "../timeline/timeline";
+import type { Reel } from "../timeline/reel";
 import { totalDuration } from "../timeline/timing";
 import { exportReducer, type ExportState, INITIAL_EXPORT_STATE } from "./exportState";
 import { frameCount } from "./frames";
@@ -17,7 +17,7 @@ export type VideoExport = {
  * タイムラインの動画書き出し。開いたときに使える形式を判定し、書き出し・キャンセル・完了表示を管理する。
  * 画面を離れたら（アンマウント）書き出しを中断する。
  */
-export function useVideoExport(timeline: Timeline): VideoExport {
+export function useVideoExport(reel: Reel): VideoExport {
   const [state, dispatch] = useReducer(exportReducer, INITIAL_EXPORT_STATE);
   const controllerRef = useRef<AbortController>(undefined);
 
@@ -46,10 +46,10 @@ export function useVideoExport(timeline: Timeline): VideoExport {
     const { format } = state;
     const controller = new AbortController();
     controllerRef.current = controller;
-    dispatch({ type: "started", total: frameCount(totalDuration(timeline)) });
+    dispatch({ type: "started", total: frameCount(totalDuration(reel)) });
     void Promise.all([loadMapCountries(), import("./exportVideo")])
       .then(([countries, { exportVideo }]) =>
-        exportVideo(timeline, countries, format, {
+        exportVideo(reel, countries, format, {
           signal: controller.signal,
           onProgress: (done, total) => dispatch({ type: "progressed", done, total }),
         }),

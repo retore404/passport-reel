@@ -3,8 +3,9 @@ import { ExportPanel } from "../export/ExportPanel";
 import { useVideoExport } from "../export/useVideoExport";
 import { loadMapCountries, type MapCountry } from "../map/countries";
 import type { VisitRecord } from "../records/visitRecords";
-import { drawFrame, FRAME_HEIGHT, FRAME_WIDTH } from "./drawFrame";
+import { createNameTagMeasure, drawFrame, FRAME_HEIGHT, FRAME_WIDTH } from "./drawFrame";
 import { createMapLayers } from "./mapLayers";
+import { buildReel, type Reel } from "./reel";
 import { buildTimeline, type Timeline } from "./timeline";
 import { Sheet } from "../Sheet";
 import { formatTime, frameAt, frameStartTimes, totalDuration } from "./timing";
@@ -37,12 +38,14 @@ function TimelinePlayer({
   readonly timeline: Timeline;
   readonly wide: boolean;
 }) {
-  const duration = totalDuration(timeline);
+  // まとめのページ分けは文字幅の計測が要るので、タイムラインが変わったときだけ作り直す
+  const reel = useMemo(() => buildReel(timeline, createNameTagMeasure()), [timeline]);
+  const duration = totalDuration(reel);
   const playback = usePlayback(duration);
-  const frame = frameAt(timeline, playback.time);
+  const frame = frameAt(reel, playback.time);
   const currentIndex = frame.kind === "year" ? frame.index : timeline.years.length;
-  const starts = frameStartTimes(timeline);
-  const videoExport = useVideoExport(timeline);
+  const starts = frameStartTimes(reel);
+  const videoExport = useVideoExport(reel);
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const { cancel } = videoExport;
   // 書き出し中にシートを閉じたら、見えないところで重い処理を続けないよう書き出しをキャンセルする
@@ -51,18 +54,13 @@ function TimelinePlayer({
     setExportSheetOpen(false);
   }, [cancel]);
   const exportPanel = (
-    <ExportPanel
-      timeline={timeline}
-      videoExport={videoExport}
-      onStart={playback.pause}
-      wide={wide}
-    />
+    <ExportPanel reel={reel} videoExport={videoExport} onStart={playback.pause} wide={wide} />
   );
 
   return (
     <div className={wide ? "preview-wide" : "preview-narrow"}>
       <div className="preview-main">
-        <FrameCanvas timeline={timeline} time={playback.time} />
+        <FrameCanvas reel={reel} time={playback.time} />
         <div className="preview-controls">
           <button type="button" className="button button--secondary" onClick={playback.restart}>
             最初から再生
@@ -134,7 +132,7 @@ function TimelinePlayer({
 }
 
 /** 9:16 を保って領域に収まる最大の大きさで、時刻 time のコマを描く。 */
-function FrameCanvas({ timeline, time }: { readonly timeline: Timeline; readonly time: number }) {
+function FrameCanvas({ reel, time }: { readonly reel: Reel; readonly time: number }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [countries, setCountries] = useState<readonly MapCountry[]>();
@@ -181,8 +179,8 @@ function FrameCanvas({ timeline, time }: { readonly timeline: Timeline; readonly
       canvas.width = width;
       canvas.height = height;
     }
-    drawFrame(ctx, width, timeline, frameAt(timeline, time), layers);
-  }, [timeline, time, layers, cssWidth]);
+    drawFrame(ctx, width, reel, frameAt(reel, time), layers);
+  }, [reel, time, layers, cssWidth]);
 
   return (
     <div ref={stageRef} className="preview-stage">
