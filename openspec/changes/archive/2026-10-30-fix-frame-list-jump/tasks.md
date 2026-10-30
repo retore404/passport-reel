@@ -18,5 +18,5 @@
 
 ## Workflow follow-up
 
-- issue #28 に紐づくブランチで PR を作成し、レビュー後にマージする。
-- マージ後に `openspec-archive-change` で本変更をアーカイブする。
+- issue #28 に紐づくブランチで PR を作成する。
+- 同じ PR の中で `openspec-archive-change` で本変更をアーカイブしてから、レビュー後にマージする。
