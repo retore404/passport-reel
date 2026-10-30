@@ -31,6 +31,7 @@ Passport Reel is an app that visualizes the countries the user has visited in ch
 
 - Specs and change proposals are managed with OpenSpec under `openspec/` (`specs/` for current behavior, `changes/` for proposed changes).
 - Start feature work and behavior changes with an OpenSpec change (`/opsx:propose` in Claude Code, `$openspec-propose` in Codex), then implement with `openspec-apply-change` and finish with `openspec-archive-change`.
+- Archive the change inside the same PR as its implementation, as a separate commit, before the PR is merged (not as a follow-up after merging). Direct commits to `main` are prohibited, so archiving after merge would need an extra PR.
 - Write OpenSpec artifacts in Japanese, keeping OpenSpec structural headings and SHALL/MUST keywords in English (configured in `openspec/config.yaml`).
 
 ## Investigation Policy
