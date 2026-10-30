@@ -9,7 +9,7 @@ import {
 import type { MapCountry } from "../map/countries";
 import { drawFrame, FRAME_HEIGHT, FRAME_WIDTH } from "../timeline/drawFrame";
 import { createMapLayers } from "../timeline/mapLayers";
-import type { Timeline } from "../timeline/timeline";
+import type { Reel } from "../timeline/reel";
 import { frameAt, totalDuration } from "../timeline/timing";
 import { FPS, frameCount, frameTime, videoFileName } from "./frames";
 import type { VideoFormat } from "./videoFormat";
@@ -40,7 +40,7 @@ type ExportOptions = {
  * signal で中断されたら書き出しを破棄し、AbortError を投げる。
  */
 export async function exportVideo(
-  timeline: Timeline,
+  reel: Reel,
   countries: readonly MapCountry[],
   format: VideoFormat,
   { onProgress, signal }: ExportOptions,
@@ -67,12 +67,12 @@ export async function exportVideo(
   });
   output.addVideoTrack(source, { frameRate: FPS });
 
-  const total = frameCount(totalDuration(timeline));
+  const total = frameCount(totalDuration(reel));
   try {
     await output.start();
     for (let index = 0; index < total; index += 1) {
       signal.throwIfAborted();
-      drawFrame(ctx, FRAME_WIDTH, timeline, frameAt(timeline, frameTime(index)), layers);
+      drawFrame(ctx, FRAME_WIDTH, reel, frameAt(reel, frameTime(index)), layers);
       // エンコーダの処理待ちに従う（待たずに積むとメモリを使い続ける）
       await source.add(frameTime(index), 1 / FPS);
       onProgress(index + 1, total);
@@ -93,5 +93,5 @@ export async function exportVideo(
   if (!buffer) {
     throw new Error("動画のデータが空");
   }
-  return new File([buffer], videoFileName(timeline), { type: output.format.mimeType });
+  return new File([buffer], videoFileName(reel.timeline), { type: output.format.mimeType });
 }
