@@ -38,4 +38,6 @@ pnpm fix     # lint:fix + format
 | Deploy command | `pnpm run deploy` |
 | Non-production branch deploy command | `pnpm run deploy:preview` |
 
+同梱した依存パッケージのライセンス一覧は、ビルド時に Vite が `dist/third-party-licenses.json` として書き出し（`apps/web/vite.config.ts` の `build.license`）、画面の上部バーの「ライセンス」から開くシートに表示する。開発サーバーでは生成されないため、表示を確かめるときは `pnpm build` してから `pnpm preview` で開く。
+
 公開リポジトリのため、秘密情報は `wrangler.jsonc` に書かず、`wrangler secret` かダッシュボードの Secrets で設定する。

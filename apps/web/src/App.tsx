@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { LicenseSheet } from "./licenses/LicenseSheet";
 import { RecordsScreen } from "./records/RecordsScreen";
 import { useVisitRecords } from "./records/useVisitRecords";
 import { PreviewScreen } from "./timeline/PreviewScreen";
@@ -19,6 +20,8 @@ export function App() {
   const visitRecords = useVisitRecords();
   const isWide = useMediaQuery(WIDE_QUERY);
   const [view, setView] = useState<View>("records");
+  const [licenseOpen, setLicenseOpen] = useState(false);
+  const closeLicense = useCallback(() => setLicenseOpen(false), []);
 
   // PC は上部バーの切り替えボタン、スマートフォンは画面下のタブで切り替える
   const viewSwitch = (
@@ -44,8 +47,15 @@ export function App() {
           <span className="brand-logo" aria-hidden="true" />
           Passport Reel
         </h1>
-        {isWide && viewSwitch}
+        <div className="topbar-actions">
+          {isWide && viewSwitch}
+          {/* 同梱したライブラリの著作権表示を利用者が辿れるようにする */}
+          <button type="button" className="license-button" onClick={() => setLicenseOpen(true)}>
+            ライセンス
+          </button>
+        </div>
       </header>
+      {licenseOpen && <LicenseSheet onClose={closeLicense} />}
       <main className="view">
         {view === "records" ? (
           <RecordsScreen visitRecords={visitRecords} wide={isWide} />

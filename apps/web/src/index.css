@@ -507,6 +507,104 @@ select.control {
   min-height: 0;
 }
 
+/* 上部バー右側。PC は画面の切り替えボタンとライセンスのボタン、スマートフォンはライセンスのボタンだけを並べる */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 地図や主要な操作の邪魔をしないよう、補足の色と小さめの文字で控えめに置く */
+.license-button {
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.license-button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ライセンスのシート。PC では画面下いっぱいのシートではなく、中央のモーダルにする */
+@media (min-width: 768px) {
+  .sheet--centered {
+    width: min(640px, calc(100% - 32px));
+    max-width: none;
+    margin: auto;
+    border-radius: var(--radius-l);
+  }
+}
+
+.license-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.license-lead,
+.license-status {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.license-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.license-item {
+  border-bottom: 1px solid var(--line);
+}
+
+.license-item summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  cursor: pointer;
+}
+
+.license-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.license-meta {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.license-source {
+  display: inline-block;
+  margin: 0 4px 8px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+/* 許諾文は改行位置に意味があるため改行を保ち、長い行はシートの幅で折り返す */
+.license-text {
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* 画面の切り替え（PC）: 上部バー右の切り替えボタン */
 .view-switch {
   display: flex;
@@ -562,6 +660,13 @@ select.control {
 .frame-item:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+
+.license-button:focus-visible,
+.license-item summary:focus-visible,
+.license-source:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* プレビュー（PC）: 中央に 9:16 のプレビュー、右にコマの一覧 */
