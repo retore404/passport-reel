@@ -22,6 +22,50 @@ describe("toMapCountries", () => {
   });
 });
 
+describe("海外領土の切り出し", () => {
+  function polygonsOf(alpha2: string) {
+    return countries
+      .filter((c) => c.alpha2 === alpha2)
+      .flatMap(({ feature: { geometry } }) => {
+        if (geometry.type === "MultiPolygon") {
+          return geometry.coordinates;
+        }
+        return geometry.type === "Polygon" ? [geometry.coordinates] : [];
+      });
+  }
+
+  /** ポリゴンの外周がすべて指定の経緯度の範囲に収まるか。 */
+  function within(
+    polygon: number[][][],
+    [west, south, east, north]: readonly [number, number, number, number],
+  ) {
+    return (polygon[0] ?? []).every(
+      ([lon = Number.NaN, lat = Number.NaN]) =>
+        lon >= west && lon <= east && lat >= south && lat <= north,
+    );
+  }
+
+  test.each(["GF", "GP", "MQ", "YT", "RE", "SJ", "BQ"])(
+    "%s の形状が親国から切り出される",
+    (code) => {
+      expect(polygonsOf(code).length).toBeGreaterThan(0);
+    },
+  );
+
+  test.each([
+    // フランス本土とコルシカ
+    ["FR", [-6, 41, 10, 52]],
+    // スヴァールバル諸島とヤンマイエン島を含まない本土と沿岸の島
+    ["NO", [4, 57, 32, 72]],
+    // カリブ海の島を含まない本土と沿岸の島
+    ["NL", [3, 50, 8, 54]],
+  ] as const)("%s の形状には本国の範囲だけが残る", (code, bounds) => {
+    const polygons = polygonsOf(code);
+    expect(polygons.length).toBeGreaterThan(0);
+    expect(polygons.every((p) => within(p, bounds))).toBe(true);
+  });
+});
+
 describe("isVisited", () => {
   const japan = findByName("Japan");
   const france = findByName("France");

@@ -95,6 +95,29 @@ describe("planWorldMap", () => {
     expect(va.y).toBeLessThan(sg.y);
   });
 
+  test("親国を登録しても、親国の形状に含まれていた海外領土は塗られない", () => {
+    const plan = planWorldMap(size, countries, new Set(["FR", "NO", "NL"]));
+    for (const territory of ["GF", "GP", "MQ", "YT", "RE", "SJ", "BQ"]) {
+      expect(colorOf(plan, territory)).toBe(MAP_COLORS.unvisited);
+    }
+    expect(plan.markers).toHaveLength(0);
+  });
+
+  test("海外領土を登録すると、その地域だけが塗られる", () => {
+    const plan = planWorldMap(size, countries, new Set(["GF", "SJ", "BQ"]));
+    for (const territory of ["GF", "SJ", "BQ"]) {
+      expect(colorOf(plan, territory)).toBe(MAP_COLORS.visited);
+    }
+    for (const parent of ["FR", "NO", "NL"]) {
+      expect(colorOf(plan, parent)).toBe(MAP_COLORS.unvisited);
+    }
+  });
+
+  test("小さな海外領土にはマーカーが出る（グアドループはマルティニークより北）", () => {
+    const plan = planWorldMap(size, countries, new Set(["GP", "MQ"]));
+    expect(markerOf(plan, "GP").y).toBeLessThan(markerOf(plan, "MQ").y);
+  });
+
   test("地図に対応しないコードが混在しても、対応する国はハイライトされる", () => {
     const plan = planWorldMap(size, countries, new Set(["JP", "XK", "ZZ"]));
     expect(colorOf(plan, "JP")).toBe(MAP_COLORS.visited);
