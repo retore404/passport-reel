@@ -17,42 +17,84 @@ export const EMPHASIS_SECONDS = 0.6;
 export const LIST_FADE_SECONDS = 0.5;
 export const PAGE_TRANSITION_SECONDS = 0.4;
 
+/**
+ * 1 か国ずつの表示の訪問のコマの長さと、コマの頭からの区間（秒）。
+ * 移動して寄る → 国名を出す → 塗って数え上げる、の順に進め、最後の 0.1 秒は止まって見せる。
+ */
+const VISIT_SECONDS = 1.6;
+const VISIT_MOVE_SECONDS = 0.6;
+/** 年が変わる訪問で、前の年から次の年へ切り替える長さ。移動と同時に進める */
+const VISIT_YEAR_SWITCH_SECONDS = 0.45;
+/** 国名は移動の終わり際から入り始める（移動が止まる前に動き出して間を詰める） */
+const VISIT_NAME_START = 0.55;
+const VISIT_NAME_FADE_SECONDS = 0.3;
+const VISIT_PAINT_START = 0.9;
+const VISIT_PAINT_SECONDS = 0.6;
+/** 到着時の輪を広げる長さ。移動が止まる少し前から始める */
+const VISIT_RING_SECONDS = 0.6;
+/** 1 か国ずつの表示のまとめのコマで、最後の国から世界全体まで引く長さ。引き終わってから国名を出す */
+export const SUMMARY_PULL_SECONDS = 1;
+
 export type FrameState =
   | { readonly kind: "year"; readonly index: number; readonly elapsed: number }
+  | { readonly kind: "visit"; readonly index: number; readonly elapsed: number }
   | { readonly kind: "summary"; readonly elapsed: number };
 
 function summaryDuration(reel: Reel): number {
   return Math.max(SUMMARY_MIN_SECONDS, reel.summaryPages.length * SUMMARY_PAGE_SECONDS);
 }
 
-export function totalDuration(reel: Reel): number {
-  return reel.timeline.years.length * YEAR_SECONDS + summaryDuration(reel);
+/** まとめより前のコマ（年のコマ、または訪問のコマ）の数と、1 コマの長さ。 */
+function bodyFrames(reel: Reel): { readonly count: number; readonly seconds: number } {
+  return reel.mode === "year"
+    ? { count: reel.timeline.years.length, seconds: YEAR_SECONDS }
+    : { count: reel.timeline.visits.length, seconds: VISIT_SECONDS };
 }
 
-/** 各コマの開始時刻（年のコマ、最後にまとめのコマ）。 */
+function summaryStart(reel: Reel): number {
+  const { count, seconds } = bodyFrames(reel);
+  return count * seconds;
+}
+
+export function totalDuration(reel: Reel): number {
+  return summaryStart(reel) + summaryDuration(reel);
+}
+
+/** 各コマの開始時刻（年または訪問のコマ、最後にまとめのコマ）。 */
 export function frameStartTimes(reel: Reel): readonly number[] {
-  const { years } = reel.timeline;
-  return [...years.map((_, index) => index * YEAR_SECONDS), years.length * YEAR_SECONDS];
+  const { count, seconds } = bodyFrames(reel);
+  return [...Array.from({ length: count }, (_, index) => index * seconds), count * seconds];
 }
 
 /**
- * コマの一覧で選んだときの移動先の時刻（年のコマ、続いてまとめのコマの国名のページごと）。
- * 年のコマの開始時刻は前の年からめくり始める瞬間、まとめのページの開始時刻は国名がまだ透明か切り替わり始める瞬間で、
- * 選んだコマの内容が見えないため、頭の演出が終わってそのコマ（ページ）の表示がそろった時刻にする。
+ * コマの一覧で選んだときの移動先の時刻（年または訪問のコマ、続いてまとめのコマの国名のページごと）。
+ * コマの開始時刻は前のコマからの移り変わりの最中で、選んだコマの内容が見えないため、
+ * 頭の演出が終わってそのコマ（ページ）の表示がそろった時刻にする。
  */
 export function frameJumpTimes(reel: Reel): readonly number[] {
   const { timeline, summaryPages } = reel;
-  const settle = Math.max(TEXT_FADE_SECONDS, EMPHASIS_SECONDS);
-  const summaryStart = timeline.years.length * YEAR_SECONDS;
+  const start = summaryStart(reel);
+  const body =
+    reel.mode === "year"
+      ? timeline.years.map(
+          (_, index) =>
+            index * YEAR_SECONDS +
+            flipSeconds(timeline, index) +
+            Math.max(TEXT_FADE_SECONDS, EMPHASIS_SECONDS),
+        )
+      : timeline.visits.map(
+          (_, index) => index * VISIT_SECONDS + VISIT_PAINT_START + VISIT_PAINT_SECONDS,
+        );
+  // 1 か国ずつの表示のまとめは、世界全体まで引いてから国名が入る
+  const listStart = reel.mode === "year" ? 0 : SUMMARY_PULL_SECONDS;
   return [
-    ...timeline.years.map(
-      (_, index) => index * YEAR_SECONDS + flipSeconds(timeline, index) + settle,
-    ),
+    ...body,
     ...summaryPages.map(
       (_, page) =>
-        summaryStart +
-        page * SUMMARY_PAGE_SECONDS +
-        (page === 0 ? LIST_FADE_SECONDS : PAGE_TRANSITION_SECONDS),
+        start +
+        (page === 0
+          ? listStart + LIST_FADE_SECONDS
+          : page * SUMMARY_PAGE_SECONDS + PAGE_TRANSITION_SECONDS),
     ),
   ];
 }
@@ -62,13 +104,46 @@ export function frameJumpTimes(reel: Reel): readonly number[] {
  * t は 0 から全体の長さの範囲に丸め、全体の長さちょうどではまとめのコマの最後の状態になる。
  */
 export function frameAt(reel: Reel, t: number): FrameState {
-  const { years } = reel.timeline;
+  const { count, seconds } = bodyFrames(reel);
   const clamped = Math.min(Math.max(t, 0), totalDuration(reel));
-  const index = Math.floor(clamped / YEAR_SECONDS);
-  if (index < years.length) {
-    return { kind: "year", index, elapsed: clamped - index * YEAR_SECONDS };
+  const index = Math.floor(clamped / seconds);
+  if (index < count) {
+    return {
+      kind: reel.mode === "year" ? "year" : "visit",
+      index,
+      elapsed: clamped - index * seconds,
+    };
   }
-  return { kind: "summary", elapsed: clamped - years.length * YEAR_SECONDS };
+  return { kind: "summary", elapsed: clamped - count * seconds };
+}
+
+function progressOf(elapsed: number, start: number, seconds: number): number {
+  return Math.min(Math.max((elapsed - start) / seconds, 0), 1);
+}
+
+/** 訪問のコマの中の各区間の進み具合（0〜1、イージング前）。 */
+export type VisitPhases = {
+  /** 前の国からこの国への地図の移動 */
+  readonly move: number;
+  /** 前の年からこの年への切り替え（年が変わる訪問だけで使う） */
+  readonly yearSwitch: number;
+  /** 番号と国名の入り */
+  readonly name: number;
+  /** この国の塗りと累計の数え上げ、タグの追加 */
+  readonly paint: number;
+  /** 移動の終わり際に、国の位置を示す輪を一度広げる */
+  readonly ring: number;
+};
+
+/** 訪問のコマの経過時間 elapsed での各区間の進み具合。描画とテストで同じ区間の定義を使う。 */
+export function visitPhases(elapsed: number): VisitPhases {
+  return {
+    move: progressOf(elapsed, 0, VISIT_MOVE_SECONDS),
+    yearSwitch: progressOf(elapsed, 0, VISIT_YEAR_SWITCH_SECONDS),
+    name: progressOf(elapsed, VISIT_NAME_START, VISIT_NAME_FADE_SECONDS),
+    paint: progressOf(elapsed, VISIT_PAINT_START, VISIT_PAINT_SECONDS),
+    ring: progressOf(elapsed, VISIT_MOVE_SECONDS - 0.1, VISIT_RING_SECONDS),
+  };
 }
 
 /**

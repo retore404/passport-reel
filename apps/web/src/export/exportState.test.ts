@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   type ExportEvent,
   exportReducer,
+  isExporting,
   type ExportState,
   INITIAL_EXPORT_STATE,
 } from "./exportState";
@@ -63,5 +64,14 @@ describe("exportReducer", () => {
       status: "ready",
       format: h264,
     });
+  });
+});
+
+describe("isExporting", () => {
+  test("書き出し中だけ true（このときプレビューの表示モードを切り替えられない）", () => {
+    expect(isExporting({ status: "exporting", format: h264, done: 1, total: 10 })).toBe(true);
+    expect(isExporting({ status: "done", format: h264, file })).toBe(false);
+    expect(isExporting({ status: "checking" })).toBe(false);
+    expect(isExporting({ status: "unsupported" })).toBe(false);
   });
 });

@@ -14,7 +14,7 @@ type Props = {
 
 /** 訪問記録を追加・確認・削除する画面。 */
 export function RecordsScreen({ visitRecords, wide }: Props) {
-  const { records, persistent, add, remove } = visitRecords;
+  const { records, persistent, add, remove, move } = visitRecords;
   const [sheetOpen, setSheetOpen] = useState(false);
   const closeSheet = useCallback(() => setSheetOpen(false), []);
   // 地図は visited が変わるたびに描き直すため、入力中の再描画で作り直さないよう記録が変わったときだけ求める
@@ -46,6 +46,7 @@ export function RecordsScreen({ visitRecords, wide }: Props) {
             <RecordList
               records={records}
               onRemove={remove}
+              onMove={move}
               emptyHint="上の入力欄で年と国を選んで追加してください。"
             />
           </div>
@@ -63,6 +64,7 @@ export function RecordsScreen({ visitRecords, wide }: Props) {
         <RecordList
           records={records}
           onRemove={remove}
+          onMove={move}
           emptyHint="「＋ 記録を追加」から訪れた国を登録してください。"
         />
       </section>

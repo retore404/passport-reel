@@ -25,6 +25,14 @@ export type ExportEvent =
 export const INITIAL_EXPORT_STATE: ExportState = { status: "checking" };
 
 /**
+ * 書き出し中か。書き出し中はプレビューの表示モードを切り替えられない。
+ * 書き出している内容（開始時の Reel）と、画面に出ている内容が食い違わないようにするため。
+ */
+export function isExporting(state: ExportState): boolean {
+  return state.status === "exporting";
+}
+
+/**
  * 書き出しの状態遷移。
  * 書き出し中にだけ進捗・完了・失敗・キャンセルを受け付け、キャンセル後に遅れて届いた通知で状態が戻らないようにする。
  */

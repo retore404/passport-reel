@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { browserStorage, loadRecords, saveRecords } from "./storage";
-import { addRecord, removeRecord, type VisitRecord } from "./visitRecords";
+import { addRecord, moveRecord, removeRecord, type VisitRecord } from "./visitRecords";
 
 export type VisitRecordsState = {
   readonly records: readonly VisitRecord[];
@@ -8,6 +8,8 @@ export type VisitRecordsState = {
   readonly persistent: boolean;
   readonly add: (record: VisitRecord) => void;
   readonly remove: (record: VisitRecord) => void;
+  /** 記録 from を、同じ年の記録 to の位置へ移す（同じ年の中の訪問順を変える）。 */
+  readonly move: (from: VisitRecord, to: VisitRecord) => void;
 };
 
 /**
@@ -33,5 +35,6 @@ export function useVisitRecords(): VisitRecordsState {
     persistent,
     add: (record) => update(addRecord(records, record)),
     remove: (record) => update(removeRecord(records, record)),
+    move: (from, to) => update(moveRecord(records, from, to)),
   };
 }

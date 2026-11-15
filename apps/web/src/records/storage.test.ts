@@ -6,6 +6,7 @@ import {
   saveRecords,
   STORAGE_KEY,
 } from "./storage";
+import { moveRecord } from "./visitRecords";
 
 const MAX_YEAR = 2026;
 
@@ -47,6 +48,16 @@ describe("parseStoredRecords", () => {
 
   test("保存データがなければ空", () => {
     expect(parseStoredRecords(null, MAX_YEAR)).toEqual([]);
+  });
+
+  test("訪問順を扱う前の形式（version 1）は、追加した順を訪問順として読み込む", () => {
+    // 訪問順の導入で保存形式は変えていないため、以前のアプリが保存した配列の並びがそのまま訪問順になる
+    const records = [
+      { year: 2019, country: "FR" },
+      { year: 2016, country: "JP" },
+      { year: 2019, country: "IT" },
+    ];
+    expect(parseStoredRecords(stored(records, 1), MAX_YEAR)).toEqual(records);
   });
 
   test("JSON として壊れていれば読み取れない", () => {
@@ -114,6 +125,16 @@ describe("saveRecords", () => {
     const records = [{ year: 2024, country: "JP" }];
     expect(saveRecords(storage, records)).toBe(true);
     expect(loadRecords(storage, MAX_YEAR).records).toEqual(records);
+  });
+
+  test("並べ替えた訪問順を保存して読み込むと、順番が保たれる", () => {
+    const storage = fakeStorage();
+    const fr2019 = { year: 2019, country: "FR" };
+    const it2019 = { year: 2019, country: "IT" };
+    const jp2016 = { year: 2016, country: "JP" };
+    const records = moveRecord([fr2019, jp2016, it2019], it2019, fr2019);
+    saveRecords(storage, records);
+    expect(loadRecords(storage, MAX_YEAR).records).toEqual([it2019, jp2016, fr2019]);
   });
 
   test("保存先が例外を投げれば false を返す", () => {

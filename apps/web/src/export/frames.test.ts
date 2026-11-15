@@ -18,7 +18,11 @@ function threeYears(): Timeline {
 
 /** まとめの国名が 1 ページに収まる 3 年分（10 秒）。 */
 function threeYearsReel(): Reel {
-  return { timeline: threeYears(), summaryPages: [["オーストラリア", "日本", "フランス"]] };
+  return {
+    mode: "year",
+    timeline: threeYears(),
+    summaryPages: [["日本", "オーストラリア", "フランス"]],
+  };
 }
 
 describe("frameCount / frameTime", () => {

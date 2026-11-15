@@ -14,7 +14,7 @@ function reelOf(pages: readonly (readonly string[])[]): Reel {
   if (!timeline) {
     throw new Error("タイムラインがない");
   }
-  return { timeline, summaryPages: pages };
+  return { mode: "year", timeline, summaryPages: pages };
 }
 
 describe("frameListItems", () => {
@@ -61,6 +61,42 @@ describe("currentFrameListIndex", () => {
 
   test("各項目の移動先では、その項目が表示中になる", () => {
     frameListItems(reel).forEach((item, index) => {
+      expect(currentFrameListIndex(reel, frameAt(reel, item.time))).toBe(index);
+    });
+  });
+});
+
+describe("1 か国ずつの表示のコマの一覧", () => {
+  /** 2016 年に韓国・台湾、2019 年にフランスと韓国（再訪）。 */
+  function focusReel(pages: readonly (readonly string[])[]): Reel {
+    const timeline = buildTimeline([
+      { year: 2016, country: "KR" },
+      { year: 2016, country: "TW" },
+      { year: 2019, country: "FR" },
+      { year: 2019, country: "KR" },
+    ]);
+    if (!timeline) {
+      throw new Error("タイムラインがない");
+    }
+    return { mode: "focus", timeline, summaryPages: pages, visitTags: [] };
+  }
+
+  test("訪問ごとに「#連番 国名」と年を示し、再訪は番号なしで再訪の印を付ける", () => {
+    const items = frameListItems(focusReel([["韓国", "台湾", "フランス"]]));
+    expect(items.map(({ label, count, revisit }) => ({ label, count, revisit }))).toEqual([
+      { label: "#1 大韓民国", count: "2016", revisit: undefined },
+      { label: "#2 台湾", count: "2016", revisit: undefined },
+      { label: "#3 フランス", count: "2019", revisit: undefined },
+      { label: "大韓民国", count: "2019", revisit: true },
+      { label: "まとめ", count: "3 か国", revisit: undefined },
+    ]);
+  });
+
+  test("移動先はコマの一覧の移動先の時刻で、そこではその項目が表示中になる", () => {
+    const reel = focusReel([["韓国", "台湾"], ["フランス"]]);
+    const items = frameListItems(reel);
+    expect(items.map((item) => item.time)).toEqual(frameJumpTimes(reel));
+    items.forEach((item, index) => {
       expect(currentFrameListIndex(reel, frameAt(reel, item.time))).toBe(index);
     });
   });

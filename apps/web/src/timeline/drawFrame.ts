@@ -1,8 +1,17 @@
 import { MAP_ASPECT_RATIO } from "../map/drawWorldMap";
 import { countryName } from "../records/countryNames";
+import { type Camera, focusCameraAt, planFocusTargets, worldCamera } from "./camera";
 import type { MapLayers } from "./mapLayers";
-import type { Reel } from "./reel";
-import { layoutPageTags, layoutYearTags, type Measure, NAME_TAGS, type Tag } from "./textLayout";
+import type { FocusReel, Reel } from "./reel";
+import {
+  layoutPageTags,
+  layoutYearTags,
+  type Measure,
+  type MovingTag,
+  NAME_TAGS,
+  type Tag,
+  transitionTags,
+} from "./textLayout";
 import {
   EMPHASIS_SECONDS,
   flipSeconds,
@@ -10,9 +19,11 @@ import {
   frameStartTimes,
   LIST_FADE_SECONDS,
   PAGE_TRANSITION_SECONDS,
+  SUMMARY_PULL_SECONDS,
   summaryPageAt,
   TEXT_FADE_SECONDS,
   totalDuration,
+  visitPhases,
 } from "./timing";
 
 /** コマの基準の大きさ。すべての配置と文字の大きさはこの座標系で決め、表示する幅に合わせて拡大・縮小する。 */
@@ -21,7 +32,7 @@ export const FRAME_HEIGHT = 1920;
 
 /**
  * コマの配色。Canvas からは CSS 変数を読めないため値を直接持つ。
- * docs/design-guidelines.md のデザイントークン（--bg、--surface-2、--text、--muted、--line、--accent、--accent-strong）と一致させる。
+ * docs/design-guidelines.md のデザイントークン（--bg、--surface-2、--text、--muted、--line、--accent、--accent-strong、--on-accent）と一致させる。
  */
 const COLORS = {
   bg: "#0b1019",
@@ -31,6 +42,7 @@ const COLORS = {
   line: "#243047",
   accent: "#f2a93b",
   accentStrong: "#ffd27a",
+  onAccent: "#1d1305",
 } as const;
 
 /** CSS の --font-sans と同じ指定。端末のサンセリフ体で描く。 */
@@ -78,6 +90,7 @@ export type FrameContext = Parameters<MapLayers["draw"]>[0] &
     | "rect"
     | "clip"
     | "roundRect"
+    | "createLinearGradient"
   > & {
     /** 文字の配置に使う。使うのは幅だけなので、テストのフェイクでも用意しやすいよう幅だけを求める。 */
     measureText: (text: string) => { readonly width: number };
@@ -390,13 +403,13 @@ function drawPage(ctx: FrameContext, names: readonly string[], alpha: number, dy
  * まとめのコマの国名。1 ページ目はフェードインし、2 ページ目以降は前のページが上へ抜けながら消え、
  * 次のページが下から入る。ページが複数あれば、国数の行の右端にページの位置を示す。
  */
-function drawSummaryNames(ctx: FrameContext, reel: Reel, elapsed: number) {
+function drawSummaryNames(ctx: FrameContext, reel: Reel, elapsed: number, listDelay = 0) {
   const { summaryPages } = reel;
   const { page, elapsed: inPage } = summaryPageAt(reel, elapsed);
   const current = summaryPages[page] ?? [];
   const previous = summaryPages[page - 1];
   if (previous === undefined) {
-    drawPage(ctx, current, easeOut(progressOf(inPage, LIST_FADE_SECONDS)), 0);
+    drawPage(ctx, current, easeOut(progressOf(inPage - listDelay, LIST_FADE_SECONDS)), 0);
   } else {
     const p = easeInOut(progressOf(inPage, PAGE_TRANSITION_SECONDS));
     if (p < 1) {
@@ -446,6 +459,291 @@ function drawSummaryFrame(
   drawProgress(ctx, positionOf(reel, reel.timeline.years.length, elapsed));
 }
 
+// ---- 1 か国ずつの表示 ----
+
+const FOCUS_VIEW = { width: FRAME_WIDTH, height: FRAME_HEIGHT };
+
+/**
+ * 1 か国ずつの表示の配置（基準 1080×1920）。地図は画面全体に描き、文字はその上に重ねる。
+ * 累計・国名のタグ・進捗バーは年ごとの表示と同じ位置（LAYOUT）を使い、まとめのコマへ切り替わっても位置がずれないようにする。
+ */
+const FOCUS_LAYOUT = {
+  /** 年は年ごとの表示の年の数字と同じ縦の中央に、左寄せで描く */
+  yearFontSize: 150,
+  /** 年を切り替えるときに縦へ動かす量 */
+  yearShift: 180,
+  ordinalY: 1062,
+  nameY: 1190,
+  nameFontSize: 120,
+  /** 国名と「再訪」のタグの間 */
+  tagGap: 28,
+  revisitFontSize: 40,
+  /** 文字を読みやすくする上下のぼかしの範囲と、最も濃いところの不透明度 */
+  topShade: { to: 470, alpha: 0.8 },
+  bottomShade: { from: 1250, alpha: 0.55 },
+} as const;
+
+/** 地図の上に重ねる文字に付ける影の色と、ぼかしの大きさ（基準の px）。 */
+const TEXT_SHADOW = { color: "rgba(11, 16, 25, 0.9)", blur: 24 } as const;
+/** 地図の上に重ねる国名のタグの地。--surface-2 を半透明にする */
+const TAG_OVER_MAP = "rgba(26, 34, 51, 0.88)";
+
+/** 上下に背景色のグラデーションを重ね、地図の上の文字を読みやすくする。alpha でまとめのコマへ向けて薄くする。 */
+function drawFocusShades(ctx: FrameContext, alpha: number) {
+  if (alpha <= 0) {
+    return;
+  }
+  const { topShade, bottomShade } = FOCUS_LAYOUT;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const top = ctx.createLinearGradient(0, 0, 0, topShade.to);
+  top.addColorStop(0, `rgba(11, 16, 25, ${topShade.alpha})`);
+  top.addColorStop(1, "rgba(11, 16, 25, 0)");
+  ctx.fillStyle = top;
+  ctx.fillRect(0, 0, FRAME_WIDTH, topShade.to);
+  const bottom = ctx.createLinearGradient(0, bottomShade.from, 0, FRAME_HEIGHT);
+  bottom.addColorStop(0, "rgba(11, 16, 25, 0)");
+  bottom.addColorStop(1, `rgba(11, 16, 25, ${bottomShade.alpha})`);
+  ctx.fillStyle = bottom;
+  ctx.fillRect(0, bottomShade.from, FRAME_WIDTH, FRAME_HEIGHT - bottomShade.from);
+  ctx.restore();
+}
+
+function withTextShadow(ctx: FrameContext, pixelScale: number, draw: () => void) {
+  ctx.save();
+  ctx.shadowColor = TEXT_SHADOW.color;
+  // shadowBlur は座標変換の拡大縮小を受けないので、実ピクセル数を掛ける
+  ctx.shadowBlur = TEXT_SHADOW.blur * pixelScale;
+  draw();
+  ctx.restore();
+}
+
+/**
+ * 1 か国ずつの表示の年。年が変わる訪問では、前の年が上へ抜けながら消え、次の年が下から入る（p は 0〜1）。
+ * alpha でまとめのコマへ向けて消す。
+ */
+function drawFocusYear(
+  ctx: FrameContext,
+  previousYear: number | undefined,
+  year: number,
+  p: number,
+  alpha: number,
+) {
+  if (alpha <= 0) {
+    return;
+  }
+  const { yearFontSize, yearShift } = FOCUS_LAYOUT;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, DIGIT_MIDDLE - yearShift / 2 - 20, FRAME_WIDTH, yearShift + 40);
+  ctx.clip();
+  setText(ctx, 800, yearFontSize, COLORS.text);
+  ctx.textBaseline = "middle";
+  const e = easeOut(p);
+  if (previousYear !== undefined && previousYear !== year && p < 1) {
+    ctx.globalAlpha = alpha * (1 - e);
+    ctx.fillText(String(previousYear), PADDING_X - 4, DIGIT_MIDDLE - yearShift * e);
+    ctx.globalAlpha = alpha * e;
+    ctx.fillText(String(year), PADDING_X - 4, DIGIT_MIDDLE + yearShift * (1 - e));
+  } else {
+    ctx.globalAlpha = alpha;
+    ctx.fillText(String(year), PADDING_X - 4, DIGIT_MIDDLE);
+  }
+  ctx.restore();
+}
+
+/**
+ * 訪問の国名。初めて訪れた国には上に「#連番」を、再訪には国名の右に「再訪」のタグを添える（再訪に番号は付けない）。
+ * p（0〜1）でフェードインしながら左から入る。国名が長ければ、タグと合わせて文字の幅に収まるよう縮める。
+ */
+function drawVisitName(
+  ctx: FrameContext,
+  name: string,
+  ordinal: number | undefined,
+  p: number,
+  pixelScale: number,
+) {
+  if (p <= 0) {
+    return;
+  }
+  const { ordinalY, nameY, nameFontSize, tagGap, revisitFontSize } = FOCUS_LAYOUT;
+  const revisit = ordinal === undefined;
+  ctx.save();
+  ctx.globalAlpha = p;
+  ctx.translate((1 - p) * -60, 0);
+  withTextShadow(ctx, pixelScale, () => {
+    if (!revisit) {
+      setText(ctx, 600, 36, COLORS.muted);
+      ctx.fillText(`#${ordinal}`, PADDING_X, ordinalY);
+    }
+    ctx.font = font(600, revisitFontSize);
+    const tagWidth = revisit ? ctx.measureText("再訪").width + 48 : 0;
+    const maxWidth = TEXT_WIDTH - (revisit ? tagWidth + tagGap : 0);
+    ctx.font = font(800, nameFontSize);
+    const natural = ctx.measureText(name).width;
+    const px = natural > maxWidth ? Math.floor((nameFontSize * maxWidth) / natural) : nameFontSize;
+    setText(ctx, 800, px, COLORS.text);
+    ctx.fillText(name, PADDING_X, nameY);
+    if (revisit) {
+      drawRevisitTag(
+        ctx,
+        PADDING_X + ctx.measureText(name).width + tagGap,
+        nameY - px * 0.36,
+        tagWidth,
+      );
+    }
+  });
+  ctx.restore();
+}
+
+/** 国名に添える「再訪」のタグ。年ごとの表示の再訪のタグと同じく枠線だけにし、地図の上でも読めるよう地を暗くする。 */
+function drawRevisitTag(ctx: FrameContext, x: number, middleY: number, width: number) {
+  const height = FOCUS_LAYOUT.revisitFontSize + 30;
+  const y = middleY - height / 2;
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.roundRect(x + 1, y + 1, width - 2, height - 2, height / 2);
+  ctx.fillStyle = "rgba(11, 16, 25, 0.6)";
+  ctx.fill();
+  ctx.strokeStyle = COLORS.muted;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  setText(ctx, 600, FOCUS_LAYOUT.revisitFontSize, COLORS.muted);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("再訪", x + width / 2, middleY);
+  ctx.restore();
+}
+
+/** 地図の上に重ねる国名のタグ。新しく加わるタグは強調色で入る。 */
+function drawMovingTags(ctx: FrameContext, tags: readonly MovingTag[], alpha: number) {
+  if (alpha <= 0) {
+    return;
+  }
+  ctx.save();
+  for (const tag of tags) {
+    if (tag.alpha <= 0) {
+      continue;
+    }
+    const x = PADDING_X + tag.x;
+    const y = LAYOUT.namesY + tag.row * (TAG_HEIGHT + NAME_TAGS.gap);
+    ctx.globalAlpha = alpha * tag.alpha;
+    ctx.beginPath();
+    ctx.roundRect(x + 1, y + 1, tag.width - 2, TAG_HEIGHT - 2, TAG_HEIGHT / 2);
+    ctx.fillStyle = tag.entering ? COLORS.accentStrong : TAG_OVER_MAP;
+    ctx.fill();
+    ctx.font = NAME_TAG_FONT;
+    ctx.fillStyle = tag.entering ? COLORS.onAccent : COLORS.text;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(tag.text, x + tag.width / 2, y + TAG_HEIGHT / 2);
+  }
+  ctx.restore();
+}
+
+/** 静止したタグを、動きのない MovingTag として扱う。 */
+function restingTags(tags: readonly Tag[]): MovingTag[] {
+  return transitionTags(tags, tags, 1);
+}
+
+function focusCamera(reel: FocusReel, layers: MapLayers, frame: FrameState): Camera {
+  const world = worldCamera(LAYOUT.mapY);
+  const targets = planFocusTargets(reel.timeline.visits, layers.focusBounds, world);
+  return focusCameraAt(targets, world, frame);
+}
+
+function drawVisitFrame(
+  ctx: FrameContext,
+  reel: FocusReel,
+  index: number,
+  elapsed: number,
+  layers: MapLayers,
+  pixelScale: number,
+) {
+  const { visits } = reel.timeline;
+  const visit = visits[index];
+  if (!visit) {
+    return;
+  }
+  const phases = visitPhases(elapsed);
+  const paint = easeOut(phases.paint);
+  const visitedBefore = new Set(visits.slice(0, index).map((v) => v.country));
+  layers.drawFocused(
+    ctx,
+    FOCUS_VIEW,
+    focusCamera(reel, layers, { kind: "visit", index, elapsed }),
+    visitedBefore,
+    { code: visit.country, strength: paint, ring: phases.ring },
+    pixelScale,
+  );
+  drawFocusShades(ctx, 1);
+  drawBrand(ctx);
+  drawFocusYear(ctx, visits[index - 1]?.year, visit.year, phases.yearSwitch, 1);
+  drawVisitName(ctx, countryName(visit.country), visit.ordinal, easeOut(phases.name), pixelScale);
+  withTextShadow(ctx, pixelScale, () => {
+    drawStats(ctx, Math.round(visit.before + (visit.after - visit.before) * paint), undefined, 1);
+  });
+  // 初めて訪れた国では、塗りに合わせてタグが末尾に加わる（収まらなければ古いタグが押し出される）。再訪では変わらない
+  const before = reel.visitTags[index - 1] ?? [];
+  const after = reel.visitTags[index] ?? [];
+  drawMovingTags(
+    ctx,
+    visit.ordinal === undefined ? restingTags(after) : transitionTags(before, after, paint),
+    1,
+  );
+  drawProgress(ctx, positionOf(reel, index, elapsed));
+}
+
+/** 1 か国ずつの表示のまとめで、世界全体まで引いた後に年ごとの表示の地図（小さな国のマーカー付き）へ切り替える長さ。 */
+const MARKER_FADE_SECONDS = 0.3;
+
+/**
+ * 1 か国ずつの表示のまとめのコマ。最後の国から世界全体まで引き、引き終わったら年ごとの表示のまとめと同じ地図・期間・
+ * 累計・国名のページに切り替える。地図は、マーカーのある年ごとの表示の地図を重ねてフェードインし、マーカーを浮かび上がらせる。
+ */
+function drawFocusSummaryFrame(
+  ctx: FrameContext,
+  reel: FocusReel,
+  elapsed: number,
+  layers: MapLayers,
+  pixelScale: number,
+) {
+  const { visits, summary } = reel.timeline;
+  const visited = new Set(summary.countries);
+  const pull = easeOut(progressOf(elapsed, SUMMARY_PULL_SECONDS));
+  const markers = easeOut(progressOf(elapsed - SUMMARY_PULL_SECONDS, MARKER_FADE_SECONDS));
+  if (markers < 1) {
+    layers.drawFocused(
+      ctx,
+      FOCUS_VIEW,
+      focusCamera(reel, layers, { kind: "summary", elapsed }),
+      visited,
+      undefined,
+      pixelScale,
+    );
+  }
+  if (markers > 0) {
+    ctx.globalAlpha = markers;
+    layers.draw(ctx, mapRect(), "summary", visited, new Set(), 1, pixelScale);
+    ctx.globalAlpha = 1;
+  }
+  drawFocusShades(ctx, 1 - pull);
+  drawBrand(ctx);
+  drawFocusYear(ctx, undefined, visits.at(-1)?.year ?? summary.lastYear, 1, 1 - pull);
+  const listFade = easeOut(progressOf(elapsed - SUMMARY_PULL_SECONDS, LIST_FADE_SECONDS));
+  ctx.globalAlpha = listFade;
+  drawPeriod(ctx, summary.firstYear, summary.lastYear);
+  ctx.globalAlpha = 1;
+  withTextShadow(ctx, pixelScale * (1 - pull), () => {
+    drawStats(ctx, summary.countries.length, undefined, 1);
+  });
+  // 引いている間は最後の訪問のタグを消していき、引き終わってからまとめの国名のページを出す
+  drawMovingTags(ctx, restingTags(reel.visitTags.at(-1) ?? []), 1 - pull);
+  drawSummaryNames(ctx, reel, elapsed, SUMMARY_PULL_SECONDS);
+  drawProgress(ctx, positionOf(reel, visits.length, elapsed));
+}
+
 /** 全体の長さに対する再生位置（0〜1）。 */
 function positionOf(reel: Reel, frameIndex: number, elapsed: number): number {
   const start = frameStartTimes(reel)[frameIndex] ?? 0;
@@ -472,10 +770,16 @@ export function drawFrame(
   ctx.globalAlpha = 1;
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
-  if (frame.kind === "year") {
-    drawYearFrame(ctx, reel, frame.index, frame.elapsed, layers, scale);
-  } else {
+  if (reel.mode === "focus") {
+    if (frame.kind === "summary") {
+      drawFocusSummaryFrame(ctx, reel, frame.elapsed, layers, scale);
+    } else {
+      drawVisitFrame(ctx, reel, frame.index, frame.elapsed, layers, scale);
+    }
+  } else if (frame.kind === "summary") {
     drawSummaryFrame(ctx, reel, frame.elapsed, layers, scale);
+  } else {
+    drawYearFrame(ctx, reel, frame.index, frame.elapsed, layers, scale);
   }
   ctx.restore();
 }
