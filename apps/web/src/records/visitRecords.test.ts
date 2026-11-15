@@ -4,6 +4,7 @@ import {
   groupByYear,
   hasRecord,
   isRevisit,
+  moveRecord,
   removeRecord,
   visitedCountries,
   type VisitRecord,
@@ -72,5 +73,50 @@ describe("isRevisit", () => {
   test("最初の年の記録は再訪ではない", () => {
     expect(isRevisit(records, jp2016)).toBe(false);
     expect(isRevisit(records, fr2024)).toBe(false);
+  });
+});
+
+describe("moveRecord", () => {
+  const fr2019: VisitRecord = { year: 2019, country: "FR" };
+  const it2019: VisitRecord = { year: 2019, country: "IT" };
+  const es2019: VisitRecord = { year: 2019, country: "ES" };
+  // 2019 年の記録の間に別の年の記録が挟まっている配列
+  const records = [fr2019, jp2016, it2019, jp2024, es2019];
+
+  test("後ろの記録を前へ移す", () => {
+    expect(groupByYear(moveRecord(records, es2019, fr2019))).toContainEqual({
+      year: 2019,
+      records: [es2019, fr2019, it2019],
+    });
+  });
+
+  test("前の記録を後ろへ移す", () => {
+    expect(groupByYear(moveRecord(records, fr2019, es2019))).toContainEqual({
+      year: 2019,
+      records: [it2019, es2019, fr2019],
+    });
+  });
+
+  test("別の年の記録の位置は変わらない", () => {
+    const moved = moveRecord(records, es2019, fr2019);
+    expect(moved[1]).toBe(jp2016);
+    expect(moved[3]).toBe(jp2024);
+    expect(moved).toHaveLength(records.length);
+  });
+
+  test("年をまたぐ移動は受け付けない", () => {
+    expect(moveRecord(records, fr2019, jp2016)).toBe(records);
+  });
+
+  test("同じ記録への移動や見つからない記録は元の配列のまま", () => {
+    expect(moveRecord(records, fr2019, fr2019)).toBe(records);
+    expect(moveRecord(records, { year: 2019, country: "DE" }, fr2019)).toBe(records);
+  });
+
+  test("追加した記録はその年の最後に並ぶ", () => {
+    expect(groupByYear(addRecord(records, { year: 2019, country: "DE" }))).toContainEqual({
+      year: 2019,
+      records: [fr2019, it2019, es2019, { year: 2019, country: "DE" }],
+    });
   });
 });

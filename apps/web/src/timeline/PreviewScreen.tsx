@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExportPanel } from "../export/ExportPanel";
+import { isExporting } from "../export/exportState";
 import { useVideoExport } from "../export/useVideoExport";
 import { loadMapCountries, type MapCountry } from "../map/countries";
 import type { VisitRecord } from "../records/visitRecords";
 import { createNameTagMeasure, drawFrame, FRAME_HEIGHT, FRAME_WIDTH } from "./drawFrame";
 import { currentFrameListIndex, frameListItems } from "./frameList";
 import { createMapLayers } from "./mapLayers";
-import { buildReel, type Reel } from "./reel";
+import { buildReel, type Reel, type ReelMode } from "./reel";
 import { buildTimeline, type Timeline } from "./timeline";
 import { Sheet } from "../Sheet";
 import { formatTime, frameAt, totalDuration } from "./timing";
@@ -40,7 +41,9 @@ function TimelinePlayer({
   readonly wide: boolean;
 }) {
   // まとめのページ分けは文字幅の計測が要るので、タイムラインが変わったときだけ作り直す
-  const reel = useMemo(() => buildReel(timeline, createNameTagMeasure()), [timeline]);
+  // プレビューを開くたびに 1 か国ずつの表示から始める（選んだモードは保存しない）
+  const [mode, setMode] = useState<ReelMode>("focus");
+  const reel = useMemo(() => buildReel(timeline, createNameTagMeasure(), mode), [timeline, mode]);
   const duration = totalDuration(reel);
   const playback = usePlayback(duration);
   const frame = frameAt(reel, playback.time);
@@ -48,6 +51,18 @@ function TimelinePlayer({
   const videoExport = useVideoExport(reel);
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const { cancel } = videoExport;
+  // 切り替えたら停止して最初のコマに戻す。書き出しの完了表示は前のモードの動画なので、書き出す前の状態に戻す
+  function changeMode(next: ReelMode) {
+    if (next === mode) {
+      return;
+    }
+    setMode(next);
+    playback.reset();
+    videoExport.reset();
+  }
+  const modeSwitch = (
+    <ModeSwitch mode={mode} disabled={isExporting(videoExport.state)} onChange={changeMode} />
+  );
   // 書き出し中にシートを閉じたら、見えないところで重い処理を続けないよう書き出しをキャンセルする
   const closeExportSheet = useCallback(() => {
     cancel();
@@ -62,6 +77,7 @@ function TimelinePlayer({
       <div className="preview-main">
         <FrameCanvas reel={reel} time={playback.time} />
         <div className="preview-controls">
+          {!wide && modeSwitch}
           <button type="button" className="button button--secondary" onClick={playback.restart}>
             最初から再生
           </button>
@@ -103,18 +119,24 @@ function TimelinePlayer({
         )}
       </div>
       {wide && (
-        <aside className="preview-panel" aria-label="コマと書き出し">
+        <aside className="preview-panel" aria-label="表示、コマと書き出し">
+          <h2 className="panel-heading">表示</h2>
+          <div className="panel-mode">{modeSwitch}</div>
           <h2 className="panel-heading">コマ</h2>
           <ol className="frame-list">
             {frameListItems(reel).map((item, index) => (
-              <li key={item.label}>
+              // 同じ国の再訪など、同じ文字の項目があるため位置も含めてキーにする
+              <li key={`${index}-${item.label}`}>
                 <button
                   type="button"
                   className="frame-item"
                   aria-current={index === currentIndex ? "step" : undefined}
                   onClick={() => playback.seek(item.time)}
                 >
-                  <span>{item.label}</span>
+                  <span>
+                    {item.label}
+                    {item.revisit && <span className="tag frame-item-tag">再訪</span>}
+                  </span>
                   <span className="frame-item-count">{item.count}</span>
                 </button>
               </li>
@@ -124,6 +146,42 @@ function TimelinePlayer({
         </aside>
       )}
     </div>
+  );
+}
+
+/** 既定の「1 か国ずつ」を左（先頭）に置く。 */
+const MODES: readonly { readonly id: ReelMode; readonly label: string }[] = [
+  { id: "focus", label: "1 か国ずつ" },
+  { id: "year", label: "年ごと" },
+];
+
+/**
+ * 表示モードの切り替え。上部バーの「記録／プレビュー」の切り替えと同じ見た目にする。
+ * fieldset でボタンをまとめ、disabled で中のボタンをまとめて押せなくする（書き出し中）。
+ */
+function ModeSwitch({
+  mode,
+  disabled,
+  onChange,
+}: {
+  readonly mode: ReelMode;
+  readonly disabled: boolean;
+  readonly onChange: (mode: ReelMode) => void;
+}) {
+  return (
+    <fieldset className="view-switch mode-switch" aria-label="表示モード" disabled={disabled}>
+      {MODES.map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          className="view-switch-button"
+          aria-pressed={mode === id}
+          onClick={() => onChange(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </fieldset>
   );
 }
 
@@ -185,7 +243,9 @@ function FrameCanvas({ reel, time }: { readonly reel: Reel; readonly time: numbe
         className="preview-canvas"
         style={{ width: cssWidth, height: (cssWidth * FRAME_HEIGHT) / FRAME_WIDTH }}
       >
-        訪問した国を年ごとに積み上げていくアニメーション
+        {reel.mode === "year"
+          ? "訪問した国を年ごとに積み上げていくアニメーション"
+          : "訪問した国を 1 か国ずつ順に地図で寄せて見せるアニメーション"}
       </canvas>
     </div>
   );

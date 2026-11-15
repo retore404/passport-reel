@@ -411,6 +411,48 @@ select.control {
   background: var(--surface-2);
 }
 
+/* ドラッグ中の行。ほかの行の上に重ね、持ち上げていることが分かるように地と枠を付ける */
+.record-row--dragging {
+  position: relative;
+  z-index: 1;
+  background: var(--surface-2);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+/* 訪問順を並べ替えるつまみ。タッチでのドラッグ中にページがスクロールしないよう touch-action を止める */
+.drag-handle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 32px;
+  margin-left: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle svg {
+  fill: currentColor;
+}
+
+.drag-handle:hover {
+  color: var(--text);
+}
+
+.record-row--dragging .drag-handle {
+  cursor: grabbing;
+}
+
+.drag-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .record-name {
   flex: 1;
   min-width: 0;
@@ -626,9 +668,32 @@ select.control {
   cursor: pointer;
 }
 
-.view-switch-button[aria-current="page"] {
+.view-switch-button[aria-current="page"],
+.view-switch-button[aria-pressed="true"] {
   background: var(--surface);
   color: var(--text);
+}
+
+.view-switch-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* プレビューの表示モードの切り替え。PC は右のパネルの先頭、スマートフォンは操作の並びの 1 行目に横幅いっぱいで置く */
+.mode-switch {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+}
+
+.mode-switch .view-switch-button {
+  flex: 1;
+}
+
+.panel-mode {
+  display: flex;
+  padding: 0 16px 8px;
 }
 
 /* 画面の切り替え（スマートフォン）: 画面下のタブ */
@@ -782,6 +847,10 @@ select.control {
 .frame-item[aria-current="step"] {
   background: rgba(242, 169, 59, 0.12);
   color: var(--accent-strong);
+}
+
+.frame-item-tag {
+  margin-left: 8px;
 }
 
 .frame-item-count {

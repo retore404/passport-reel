@@ -11,14 +11,14 @@ function timelineOf(records: Parameters<typeof buildTimeline>[0]): Timeline {
 }
 
 describe("buildReel", () => {
-  test("まとめの国名を日本語名でページに分ける", () => {
+  test("まとめの国名を、日本語名にして初めて訪れた順にページに分ける", () => {
     const timeline = timelineOf([
       { year: 2016, country: "JP" },
       { year: 2024, country: "FR" },
     ]);
     const reel = buildReel(timeline, (text) => text.length * 38);
     expect(reel.timeline).toBe(timeline);
-    expect(reel.summaryPages).toEqual([["フランス", "日本"]]);
+    expect(reel.summaryPages).toEqual([["日本", "フランス"]]);
   });
 
   test("表示枠に収まらなければ複数ページになる", () => {
@@ -28,5 +28,17 @@ describe("buildReel", () => {
     );
     const reel = buildReel(timeline, () => 900);
     expect(reel.summaryPages.map((page) => page.length)).toEqual([3, 1]);
+  });
+
+  test("表示モードを指定して作れ、まとめのページ分けは両モードで同じ", () => {
+    const timeline = timelineOf([
+      { year: 2016, country: "JP" },
+      { year: 2024, country: "FR" },
+    ]);
+    const measure = (text: string) => text.length * 38;
+    expect(buildReel(timeline, measure).mode).toBe("year");
+    const focus = buildReel(timeline, measure, "focus");
+    expect(focus.mode).toBe("focus");
+    expect(focus.summaryPages).toEqual(buildReel(timeline, measure).summaryPages);
   });
 });

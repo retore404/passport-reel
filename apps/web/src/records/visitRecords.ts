@@ -28,6 +28,42 @@ export function removeRecord(
   return records.filter((r) => r.year !== record.year || r.country !== record.country);
 }
 
+function sameRecord(a: VisitRecord, b: VisitRecord): boolean {
+  return a.year === b.year && a.country === b.country;
+}
+
+/**
+ * 記録 from を、同じ年の記録 to の位置へ移した新しい配列を返す（to は後ろへずれるか前へ詰まる）。
+ * 同じ年の中の訪問順は「配列の中で同じ年の記録が並ぶ順」で表すため、その年の記録が占める位置の集合は変えず、
+ * 中身だけを並べ替える。別の年の記録の位置は変わらない。年が違う・同じ記録・見つからない場合は元の配列を返す。
+ */
+export function moveRecord(
+  records: readonly VisitRecord[],
+  from: VisitRecord,
+  to: VisitRecord,
+): readonly VisitRecord[] {
+  if (from.year !== to.year || sameRecord(from, to)) {
+    return records;
+  }
+  const slots = records.flatMap((r, index) => (r.year === from.year ? [index] : []));
+  const group = records.filter((r) => r.year === from.year);
+  const fromIndex = group.findIndex((r) => sameRecord(r, from));
+  const toIndex = group.findIndex((r) => sameRecord(r, to));
+  const moving = group[fromIndex];
+  if (moving === undefined || toIndex < 0) {
+    return records;
+  }
+  const moved = group.toSpliced(fromIndex, 1).toSpliced(toIndex, 0, moving);
+  const next = [...records];
+  slots.forEach((slot, i) => {
+    const record = moved[i];
+    if (record !== undefined) {
+      next[slot] = record;
+    }
+  });
+  return next;
+}
+
 /** 記録に含まれる国の集合。同じ国の複数年の記録は1か国になる。 */
 export function visitedCountries(records: readonly VisitRecord[]): ReadonlySet<string> {
   return new Set(records.map((r) => r.country));

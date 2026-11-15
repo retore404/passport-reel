@@ -1,11 +1,11 @@
-import { countryName } from "../records/countryNames";
 import type { VisitRecord } from "../records/visitRecords";
+import { buildVisits, type Visit } from "./visits";
 
 type YearEntry = {
   readonly year: number;
-  /** その年に初めて訪れた国（alpha-2、日本語名の順） */
+  /** その年に初めて訪れた国（alpha-2、その年の訪問順） */
   readonly newCountries: readonly string[];
-  /** その年に再訪した国（以前の年にも記録がある国。alpha-2、日本語名の順） */
+  /** その年に再訪した国（以前の年にも記録がある国。alpha-2、その年の訪問順） */
   readonly revisitedCountries: readonly string[];
   /** その年までの累計の訪問国 */
   readonly cumulative: ReadonlySet<string>;
@@ -13,21 +13,20 @@ type YearEntry = {
 
 export type Timeline = {
   readonly years: readonly YearEntry[];
+  /** 1 か国ずつの表示で使う、訪問の並び（年の古い順、同じ年の中は訪問順。再訪を含む） */
+  readonly visits: readonly Visit[];
   readonly summary: {
     readonly firstYear: number;
     readonly lastYear: number;
-    /** 訪れたすべての国（alpha-2、日本語名の順） */
+    /** 訪れたすべての国（alpha-2、初めて訪れた順＝初めて訪れた年の古い順、同じ年の中は訪問順） */
     readonly countries: readonly string[];
   };
 };
 
-function byJapaneseName(codes: Iterable<string>): string[] {
-  return [...codes].toSorted((a, b) => countryName(a).localeCompare(countryName(b), "ja"));
-}
-
 /**
  * 訪問記録から年ごとのタイムラインを作る。記録がなければ undefined。
  * 同じ国を複数年に訪れた場合は、最初の年だけ「初めて訪れた国」として数える。
+ * 同じ年の中の訪問順は記録の配列の並び（visitRecords.ts）なので、年で絞り込んだ並びをそのまま使う。
  */
 export function buildTimeline(records: readonly VisitRecord[]): Timeline | undefined {
   const years = [...new Set(records.map((r) => r.year))].toSorted((a, b) => a - b);
@@ -46,10 +45,14 @@ export function buildTimeline(records: readonly VisitRecord[]): Timeline | undef
     }
     return {
       year,
-      newCountries: byJapaneseName(newCountries),
-      revisitedCountries: byJapaneseName(revisitedCountries),
+      newCountries,
+      revisitedCountries,
       cumulative: new Set(seen),
     };
   });
-  return { years: entries, summary: { firstYear, lastYear, countries: byJapaneseName(seen) } };
+  return {
+    years: entries,
+    visits: buildVisits(records),
+    summary: { firstYear, lastYear, countries: [...seen] },
+  };
 }

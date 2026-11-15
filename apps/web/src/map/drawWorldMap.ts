@@ -80,7 +80,7 @@ export function mapExtent(size: MapSize): MapExtent {
   ];
 }
 
-function createProjection(size: MapSize) {
+export function createProjection(size: MapSize) {
   const extent = mapExtent(size);
   return geoMercator()
     .fitExtent(extent, {
@@ -197,7 +197,7 @@ export function drawWorldMap(
 export type EmphasisContext = MapContext &
   Pick<CanvasRenderingContext2D, "shadowBlur" | "shadowColor" | "save" | "restore">;
 
-function mixColor(from: string, to: string, ratio: number): string {
+export function mixColor(from: string, to: string, ratio: number): string {
   const channels = (hex: string) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
   const a = channels(from);
   const b = channels(to);

@@ -40,22 +40,37 @@ describe("buildTimeline", () => {
     expect(y2024?.cumulative.size).toBe(1);
   });
 
-  test("同じ年の国は日本語名の順に並ぶ", () => {
+  test("同じ年の国はその年の訪問順（記録の並び）に並ぶ", () => {
     const timeline = buildTimeline([
-      { year: 2024, country: "FR" },
       { year: 2024, country: "IT" },
+      { year: 2016, country: "JP" },
+      { year: 2024, country: "FR" },
     ]);
-    // イタリア → フランス
-    expect(timeline?.years[0]?.newCountries).toEqual(["IT", "FR"]);
+    expect(timeline?.years[1]?.newCountries).toEqual(["IT", "FR"]);
   });
 
-  test("まとめに期間とすべての国が入る", () => {
+  test("再訪した国もその年の訪問順に並ぶ", () => {
     const timeline = buildTimeline([
-      { year: 2024, country: "FR" },
       { year: 2016, country: "JP" },
+      { year: 2016, country: "FR" },
+      { year: 2024, country: "FR" },
       { year: 2024, country: "JP" },
     ]);
-    // 日本語の照合順ではカナの国名が漢字の国名より前に来る
-    expect(timeline?.summary).toEqual({ firstYear: 2016, lastYear: 2024, countries: ["FR", "JP"] });
+    expect(timeline?.years[1]?.revisitedCountries).toEqual(["FR", "JP"]);
+  });
+
+  test("まとめに期間とすべての国が初めて訪れた順に入る", () => {
+    const timeline = buildTimeline([
+      { year: 2019, country: "IT" },
+      { year: 2016, country: "TH" },
+      { year: 2019, country: "KR" },
+      { year: 2024, country: "TH" },
+    ]);
+    // 初めて訪れた年の古い順、同じ年の中は訪問順。再訪は数えない
+    expect(timeline?.summary).toEqual({
+      firstYear: 2016,
+      lastYear: 2024,
+      countries: ["TH", "IT", "KR"],
+    });
   });
 });

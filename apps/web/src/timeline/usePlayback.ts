@@ -14,6 +14,8 @@ export type Playback = PlaybackState & {
   readonly pause: () => void;
   readonly restart: () => void;
   readonly seek: (time: number) => void;
+  /** 停止して最初に戻す（表示モードを切り替えたときなど、別の内容を頭から見せるため）。 */
+  readonly reset: () => void;
 };
 
 /**
@@ -50,5 +52,6 @@ export function usePlayback(duration: number): Playback {
     pause: () => setState(pause),
     restart: () => setState(restart()),
     seek: (time) => setState((current) => seek(current, time, duration)),
+    reset: () => setState(INITIAL_PLAYBACK),
   };
 }

@@ -9,9 +9,11 @@ import {
   frameStartTimes,
   LIST_FADE_SECONDS,
   PAGE_TRANSITION_SECONDS,
+  SUMMARY_PULL_SECONDS,
   summaryPageAt,
   TEXT_FADE_SECONDS,
   totalDuration,
+  visitPhases,
 } from "./timing";
 
 function timelineOf(records: Parameters<typeof buildTimeline>[0]): Timeline {
@@ -29,7 +31,7 @@ function threeYears(pages = 1): Reel {
     { year: 2019, country: "AU" },
     { year: 2024, country: "FR" },
   ]);
-  return { timeline, summaryPages: Array.from({ length: pages }, () => ["日本"]) };
+  return { mode: "year", timeline, summaryPages: Array.from({ length: pages }, () => ["日本"]) };
 }
 
 describe("totalDuration", () => {
@@ -150,5 +152,91 @@ describe("summaryPageAt", () => {
 
   test("1 ページならずっと 1 ページ目", () => {
     expect(summaryPageAt(threeYears(1), 4)).toEqual({ page: 0, elapsed: 4 });
+  });
+});
+
+/** 訪問が 5 件（うち 1 件は再訪）の 1 か国ずつの表示。まとめの国名は pages ページに分かれているものとする。 */
+function fiveVisits(pages = 1): Reel {
+  const timeline = timelineOf([
+    { year: 2016, country: "KR" },
+    { year: 2016, country: "TW" },
+    { year: 2019, country: "FR" },
+    { year: 2019, country: "KR" },
+    { year: 2024, country: "TH" },
+  ]);
+  return {
+    mode: "focus",
+    timeline,
+    summaryPages: Array.from({ length: pages }, () => ["韓国"]),
+    visitTags: [],
+  };
+}
+
+describe("1 か国ずつの表示のタイミング", () => {
+  test("訪問 5 件・まとめ 1 ページなら 5 × 1.6 秒 + 4 秒 = 12 秒", () => {
+    expect(totalDuration(fiveVisits())).toBeCloseTo(12);
+  });
+
+  test("まとめが 3 ページなら 5 × 1.6 秒 + 3 × 2.5 秒 = 15.5 秒", () => {
+    expect(totalDuration(fiveVisits(3))).toBeCloseTo(15.5);
+  });
+
+  test("3.3 秒は 3 つ目の訪問のコマ", () => {
+    expect(frameAt(fiveVisits(), 3.3)).toMatchObject({ kind: "visit", index: 2 });
+  });
+
+  test("訪問のコマの後はまとめのコマ", () => {
+    expect(frameAt(fiveVisits(), 8.5)).toMatchObject({ kind: "summary" });
+  });
+
+  test("コマの開始時刻は 1.6 秒ごと", () => {
+    const starts = frameStartTimes(fiveVisits());
+    expect(starts).toHaveLength(6);
+    expect(starts[2]).toBeCloseTo(3.2);
+    expect(starts[5]).toBeCloseTo(8);
+  });
+
+  test("一覧の移動先は、各訪問のコマの 1.5 秒の時点（塗りと数え上げが終わった時刻）", () => {
+    const reel = fiveVisits();
+    const jumps = frameJumpTimes(reel);
+    expect(jumps[0]).toBeCloseTo(1.5);
+    expect(jumps[2]).toBeCloseTo(3.2 + 1.5);
+    const frame = frameAt(reel, jumps[2] ?? 0);
+    expect(frame).toMatchObject({ kind: "visit", index: 2 });
+    expect(frame.kind === "visit" && visitPhases(frame.elapsed).paint).toBe(1);
+  });
+
+  test("まとめの移動先は、世界全体まで引いて国名がフェードインし終わった時刻", () => {
+    const jumps = frameJumpTimes(fiveVisits());
+    expect(jumps).toHaveLength(6);
+    expect(jumps[5]).toBeCloseTo(8 + SUMMARY_PULL_SECONDS + LIST_FADE_SECONDS);
+  });
+
+  test("まとめが複数ページなら、2 ページ目以降は年ごとの表示と同じ考え方の時刻へ移動する", () => {
+    const reel = fiveVisits(3);
+    const summaryJumps = frameJumpTimes(reel).slice(5);
+    expect(summaryJumps[1]).toBeCloseTo(8 + 2.5 + PAGE_TRANSITION_SECONDS);
+    summaryJumps.forEach((time, page) => {
+      const frame = frameAt(reel, time);
+      expect(frame.kind === "summary" && summaryPageAt(reel, frame.elapsed).page).toBe(page);
+    });
+  });
+});
+
+describe("visitPhases", () => {
+  test("移動の途中では、国名も塗りもまだ始まっていない", () => {
+    const phases = visitPhases(0.3);
+    expect(phases.move).toBeGreaterThan(0);
+    expect(phases.move).toBeLessThan(1);
+    expect(phases.name).toBe(0);
+    expect(phases.paint).toBe(0);
+  });
+
+  test("移動が終わってから塗りが始まり、国名は塗りより先に入る", () => {
+    expect(visitPhases(0.6).move).toBe(1);
+    expect(visitPhases(0.9).name).toBe(1);
+    expect(visitPhases(0.85).paint).toBe(0);
+    expect(visitPhases(1.2).paint).toBeGreaterThan(0);
+    expect(visitPhases(1.5).paint).toBe(1);
   });
 });

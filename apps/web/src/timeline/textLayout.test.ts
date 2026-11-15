@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { layoutPageTags, layoutYearTags, paginateNames, type Tag } from "./textLayout";
+import {
+  layoutPageTags,
+  layoutRecentTags,
+  layoutYearTags,
+  paginateNames,
+  type Tag,
+  transitionTags,
+} from "./textLayout";
 
 /**
  * 1 文字 = 幅 100 として測るフェイク（テストの文字はすべて BMP 内なので UTF-16 の長さで数える）。
@@ -82,5 +89,51 @@ describe("paginateNames / layoutPageTags", () => {
 
   test("1 ページに収まれば 1 ページ", () => {
     expect(paginateNames(["AAAA", "BBBB"], measure)).toEqual([["AAAA", "BBBB"]]);
+  });
+});
+
+describe("layoutRecentTags", () => {
+  test("収まるならすべての国名を古い順に並べる", () => {
+    const tags = layoutRecentTags(["韓国", "台湾", "タイ"], (text) => text.length * 38);
+    expect(tags.map((tag) => tag.text)).toEqual(["韓国", "台湾", "タイ"]);
+  });
+
+  test("収まらないときは、最も古い国名から外して新しい国名を残す", () => {
+    // 1 つのタグが行の幅を占めるほど広く測ると、3 行に 3 か国まで
+    const tags = layoutRecentTags(["韓国", "台湾", "タイ", "フランス", "イタリア"], () => 900);
+    expect(tags.map((tag) => tag.text)).toEqual(["タイ", "フランス", "イタリア"]);
+    expect(tags.map((tag) => tag.row)).toEqual([0, 1, 2]);
+  });
+
+  test("国名がなければタグもない", () => {
+    expect(layoutRecentTags([], () => 100)).toEqual([]);
+  });
+});
+
+describe("transitionTags", () => {
+  // 1 つのタグが行の幅を占めるほど広く測り、3 行に 3 か国までにする
+  const fullRow = () => 900;
+  const before = layoutRecentTags(["韓国", "台湾", "タイ"], fullRow);
+  const after = layoutRecentTags(["韓国", "台湾", "タイ", "フランス"], fullRow);
+
+  test("途中では、押し出されるタグが消えていき、残るタグが前の行へ動き、新しいタグが入ってくる", () => {
+    const moving = transitionTags(before, after, 0.5);
+    expect(moving.find((tag) => tag.text === "韓国")).toMatchObject({
+      alpha: 0.5,
+      entering: false,
+    });
+    expect(moving.find((tag) => tag.text === "台湾")).toMatchObject({ row: 0.5, alpha: 1 });
+    expect(moving.find((tag) => tag.text === "フランス")).toMatchObject({
+      row: 2,
+      alpha: 0.5,
+      entering: true,
+    });
+  });
+
+  test("終わりでは後の配置と一致し、押し出されたタグは見えない", () => {
+    const moving = transitionTags(before, after, 1);
+    expect(moving.filter((tag) => tag.alpha > 0).map(({ text, row }) => ({ text, row }))).toEqual(
+      after.map(({ text, row }) => ({ text, row })),
+    );
   });
 });

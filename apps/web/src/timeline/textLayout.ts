@@ -117,6 +117,70 @@ export function layoutPageTags(names: readonly string[], measure: Measure): Tag[
   return layoutTags(pageTokens(names), measure) ?? [];
 }
 
+/** 押し出しの配置で試す国名の数の上限。3 行に収まるタグの数はこれより十分少ないので、計測の回数を抑える。 */
+const MAX_RECENT_TAGS = 60;
+
+/**
+ * 1 か国ずつの表示の国名のタグ。国名を末尾（新しい国）から数えて表示枠に収まる分だけ、古い順に並べる。
+ * 収まらない古い国は表示しない（押し出す）。
+ */
+export function layoutRecentTags(names: readonly string[], measure: Measure): Tag[] {
+  for (let shown = Math.min(names.length, MAX_RECENT_TAGS); shown > 0; shown -= 1) {
+    const tags = layoutTags(pageTokens(names.slice(names.length - shown)), measure);
+    if (tags) {
+      return tags;
+    }
+  }
+  return [];
+}
+
+/** 配置が変わる途中のタグ。row は行の位置を補間した値（小数になる）。 */
+export type MovingTag = {
+  readonly text: string;
+  readonly x: number;
+  readonly row: number;
+  readonly width: number;
+  readonly alpha: number;
+  /** 新しく加わるタグか */
+  readonly entering: boolean;
+};
+
+/**
+ * タグの配置 before から after へ、p（0〜1）だけ移った途中の状態。国名で対応を取る。
+ * 残るタグは前の位置から後の位置へ動き、押し出されるタグはその場でフェードアウトし、新しいタグはフェードインする。
+ */
+export function transitionTags(
+  before: readonly Tag[],
+  after: readonly Tag[],
+  p: number,
+): MovingTag[] {
+  const afterTexts = new Set(after.map((tag) => tag.text));
+  const beforeByText = new Map(before.map((tag) => [tag.text, tag]));
+  const leaving = before
+    .filter((tag) => !afterTexts.has(tag.text))
+    .map((tag) => ({ ...tag, alpha: 1 - p, entering: false }));
+  const placed = after.map((tag) => {
+    const from = beforeByText.get(tag.text);
+    return from
+      ? {
+          ...tag,
+          x: from.x + (tag.x - from.x) * p,
+          row: from.row + (tag.row - from.row) * p,
+          alpha: 1,
+          entering: false,
+        }
+      : { ...tag, alpha: p, entering: true };
+  });
+  return [...leaving, ...placed].map(({ text, x, row, width, alpha, entering }) => ({
+    text,
+    x,
+    row,
+    width,
+    alpha,
+    entering,
+  }));
+}
+
 /** まとめのコマの国名を、表示枠に収まる単位で先頭からページに分ける。 */
 export function paginateNames(names: readonly string[], measure: Measure): string[][] {
   const pages: string[][] = [[]];
