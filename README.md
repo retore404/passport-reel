@@ -7,6 +7,13 @@
 - Node.js / Claude Code / Codex / OpenSpec は mise（`mise.toml`）、pnpm は `package.json#packageManager` で版数を固定する。
 - 依存パッケージは公開から7日以上経ったものだけを入れる（`minimumReleaseAge`）。npm/npx は使わず pnpm を使う。
 
+## 依存の更新（Renovate）
+
+- 依存の更新 PR は [Renovate](https://docs.renovatebot.com/) が作成する。設定は `renovate.json` にある。利用には Renovate GitHub App をリポジトリへインストールする必要がある。
+- 対象は pnpm の依存と `package.json#packageManager`、`mise.toml` のツール、devcontainer の feature と Dockerfile のベースイメージ（digest で固定する）。
+- 公開から7日未満のバージョンへの更新 PR は作らない。ただし公開日時を取得できない docker 系（devcontainer の feature とベースイメージ）は待機の対象外とする。
+- 自動マージはしない。PR はすべて手動でレビューしてマージする。
+
 ## 構成
 
 | パス | 内容 |

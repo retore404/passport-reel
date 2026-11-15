@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Tokyo",
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "dockerfile": {
+    "pinDigests": true
+  },
+  "packageRules": [
+    {
+      "description": "ghcr.io や mcr.microsoft.com は公開日時を返さず、7 日待機を課すと更新が永久に保留されるため、docker 系（devcontainer の feature とベースイメージ）は待機の対象外とする",
+      "matchDatasources": ["docker"],
+      "minimumReleaseAge": null
+    }
+  ]
+}
