@@ -24,6 +24,8 @@ export const COUNTRY_ALIASES: Readonly<Record<string, readonly string[]>> = {
   GB: ["英国"],
   SZ: ["エスワティニ"],
   XN: ["キタキプロス"],
+  XO: ["ミナミオセチア"],
+  XT: ["エンドニエストル", "トランスニストリア"],
 };
 
 const isoNames = getNames("ja");
