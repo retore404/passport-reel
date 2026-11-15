@@ -2,12 +2,13 @@ import type { Feature, Position } from "geojson";
 import { numericToAlpha2 } from "i18n-iso-countries";
 import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
+import { UNRECOGNIZED_STATES } from "../records/unrecognizedStates";
 
 /** 地図上の1つの国（または国コードを持たない地域）の形状。 */
 export type MapCountry = {
   /**
-   * ISO 3166-1 alpha-2。
-   * Kosovo など ISO 3166-1 numeric を持たない形状では undefined になり、どの訪問国とも一致しない。
+   * ISO 3166-1 alpha-2、または国として扱う ISO 3166-1 にない地域の ID（XK など）。
+   * ISO 3166-1 numeric を持たず、その地域にも当たらない形状（Siachen Glacier など）では undefined になり、どの訪問国とも一致しない。
    */
   readonly alpha2: string | undefined;
   readonly feature: Feature;
@@ -82,12 +83,28 @@ function splitOverseasTerritories(alpha2: string, countryFeature: Feature): MapC
   }));
 }
 
-/** world-atlas の TopoJSON（id は ISO 3166-1 numeric）を、alpha-2 で識別する国の一覧に変換する。 */
+const unrecognizedCodeByMapName = new Map(
+  UNRECOGNIZED_STATES.map(({ code, mapName }) => [mapName, code]),
+);
+
+/** 形状の名前が国として扱う ISO 3166-1 にない地域に当たれば、その ID を返す。 */
+function unrecognizedCode(countryFeature: Feature): string | undefined {
+  const name: unknown = countryFeature.properties?.["name"];
+  return typeof name === "string" ? unrecognizedCodeByMapName.get(name) : undefined;
+}
+
+/**
+ * world-atlas の TopoJSON（id は ISO 3166-1 numeric）を、alpha-2 で識別する国の一覧に変換する。
+ * id のない形状は、国として扱う ISO 3166-1 にない地域の名前に一致すればその ID で識別する。
+ * id のある国の扱いを変えないよう、名前での照合は id のない形状に限る。
+ */
 export function toMapCountries(topology: CountriesTopology): MapCountry[] {
   return feature(topology, topology.objects.countries).features.flatMap(
     (countryFeature): MapCountry[] => {
       const alpha2 =
-        countryFeature.id === undefined ? undefined : numericToAlpha2(countryFeature.id);
+        countryFeature.id === undefined
+          ? unrecognizedCode(countryFeature)
+          : numericToAlpha2(countryFeature.id);
       return alpha2 === undefined
         ? [{ alpha2, feature: countryFeature }]
         : splitOverseasTerritories(alpha2, countryFeature);

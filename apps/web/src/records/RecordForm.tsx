@@ -1,6 +1,6 @@
 import { type KeyboardEvent, type SubmitEvent, useId, useRef, useState } from "react";
 import { isImeConfirmingEnter, soleSelectableCandidate } from "./candidates";
-import { type CountryName, searchCountries } from "./countryNames";
+import { type CountryName, displayCountryCode, searchCountries } from "./countryNames";
 import { hasRecord, MIN_YEAR, type VisitRecord } from "./visitRecords";
 
 type Props = {
@@ -139,7 +139,7 @@ export function RecordForm({ records, onAdd, layout }: Props) {
                       onClick={() => choose(country)}
                       onKeyDown={(event) => moveFocus(event, event.currentTarget)}
                     >
-                      <span className="country-code">{country.code}</span>
+                      <span className="country-code">{displayCountryCode(country.code)}</span>
                       <Highlighted text={country.name} query={query} />
                       {added && <span className="tag">追加済み</span>}
                     </button>

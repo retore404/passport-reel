@@ -101,13 +101,13 @@ describe("planFocusTargets", () => {
   test("地図に形状のない国は前の位置のまま動かない", () => {
     const visits = buildVisits([
       { year: 2024, country: "FR" },
-      { year: 2024, country: "XK" },
+      { year: 2024, country: "ZZ" },
     ]);
     const [france, unknown] = planFocusTargets(visits, () => undefined, world);
     expect(france).toEqual(world);
     expect(unknown).toEqual(world);
-    const [fr, xk] = planFocusTargets(visits, boundsOf, world);
-    expect(xk).toEqual(fr);
+    const [fr, zz] = planFocusTargets(visits, boundsOf, world);
+    expect(zz).toEqual(fr);
   });
 });
 

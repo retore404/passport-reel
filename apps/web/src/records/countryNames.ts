@@ -1,5 +1,6 @@
 import { getNames, registerLocale } from "i18n-iso-countries";
 import ja from "i18n-iso-countries/langs/ja.json";
+import { UNRECOGNIZED_STATES } from "./unrecognizedStates";
 
 registerLocale(ja);
 
@@ -11,8 +12,9 @@ export type CountryName = {
 };
 
 /**
- * 日本語データの名称と異なる、一般的な呼び名。
+ * 日本語データの名称と異なる、一般的な呼び名や読み。
  * 日本語データは「大韓民国」「中華人民共和国」のような正式名称が多く、普段の呼び名では部分一致しないものだけを持つ。
+ * 国名の一部が漢字でひらがなの入力に一致しないもののうち、必要なものは読みのカタカナも持つ。
  */
 export const COUNTRY_ALIASES: Readonly<Record<string, readonly string[]>> = {
   KR: ["韓国"],
@@ -21,18 +23,37 @@ export const COUNTRY_ALIASES: Readonly<Record<string, readonly string[]>> = {
   US: ["米国"],
   GB: ["英国"],
   SZ: ["エスワティニ"],
+  XN: ["キタキプロス"],
 };
 
-/** 日本語名を持つすべての国。表示順は日本語名の順。 */
-export const COUNTRY_NAMES: readonly CountryName[] = Object.entries(getNames("ja"))
-  .map(([code, name]) => ({ code, name }))
-  .toSorted((a, b) => a.name.localeCompare(b.name, "ja"));
+const isoNames = getNames("ja");
+
+/**
+ * 日本語名を持つすべての国。表示順は日本語名の順。
+ * 国として扱う ISO 3166-1 にない地域のうち、日本語データにない地域（XK は収録済み）を足している。
+ */
+export const COUNTRY_NAMES: readonly CountryName[] = [
+  ...Object.entries(isoNames).map(([code, name]) => ({ code, name })),
+  ...UNRECOGNIZED_STATES.filter(({ code }) => !(code in isoNames)).map(({ code, name }) => ({
+    code,
+    name,
+  })),
+].toSorted((a, b) => a.name.localeCompare(b.name, "ja"));
 
 const nameByCode = new Map(COUNTRY_NAMES.map(({ code, name }) => [code, name]));
 
 /** 国コードの日本語名。日本語名を持たないコードはコードをそのまま返す。 */
 export function countryName(code: string): string {
   return nameByCode.get(code) ?? code;
+}
+
+const displayCodeByCode = new Map(
+  UNRECOGNIZED_STATES.map(({ code, displayCode }) => [code, displayCode]),
+);
+
+/** 一覧や候補で国コードとして表示する文字列。ISO 3166-1 にない地域は ID ではなく決められた表示（"--" など）にする。 */
+export function displayCountryCode(code: string): string {
+  return displayCodeByCode.get(code) ?? code;
 }
 
 /**

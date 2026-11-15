@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import topology from "world-atlas/countries-50m.json";
+import { UNRECOGNIZED_STATES } from "../records/unrecognizedStates";
 import { isVisited, toMapCountries } from "./countries";
 
 const countries = toMapCountries(topology);
@@ -17,8 +18,22 @@ describe("toMapCountries", () => {
     expect(countries.find((c) => c.feature.id === "392")?.alpha2).toBe("JP");
   });
 
-  test("id のない形状は alpha-2 を持たない", () => {
-    expect(findByName("Kosovo").alpha2).toBeUndefined();
+  test.each(UNRECOGNIZED_STATES.map(({ code }) => code))(
+    "国として扱う ISO 3166-1 にない地域 %s に、ちょうど 1 つの形状が対応する",
+    (code) => {
+      expect(countries.filter((c) => c.alpha2 === code)).toHaveLength(1);
+    },
+  );
+
+  test("名前で ISO 3166-1 にない地域を識別する", () => {
+    expect(findByName("Kosovo").alpha2).toBe("XK");
+    expect(findByName("N. Cyprus").alpha2).toBe("XN");
+    expect(findByName("Somaliland").alpha2).toBe("XS");
+  });
+
+  test("id がなく、ISO 3166-1 にない地域にも当たらない形状は alpha-2 を持たない", () => {
+    expect(findByName("Indian Ocean Ter.").alpha2).toBeUndefined();
+    expect(findByName("Siachen Glacier").alpha2).toBeUndefined();
   });
 });
 
@@ -71,12 +86,12 @@ describe("isVisited", () => {
   const france = findByName("France");
 
   test("地図に対応しないコードが混在しても、対応する国は訪問済みと判定される", () => {
-    const visited = new Set(["JP", "XK", "ZZ"]);
+    const visited = new Set(["JP", "ZZ"]);
     expect(isVisited(japan, visited)).toBe(true);
     expect(isVisited(france, visited)).toBe(false);
   });
 
   test("alpha-2 を持たない形状は訪問済みと判定されない", () => {
-    expect(isVisited(findByName("Kosovo"), new Set(["XK"]))).toBe(false);
+    expect(isVisited(findByName("Siachen Glacier"), new Set(["ZZ"]))).toBe(false);
   });
 });
