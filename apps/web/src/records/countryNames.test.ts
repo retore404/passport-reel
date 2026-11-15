@@ -53,6 +53,15 @@ describe("searchCountries", () => {
     expect(codes("コソボ")).toEqual(["XK"]);
   });
 
+  test("親国の形状に含まれていた地域も、日本語名・読み・別の呼び名で候補に出る", () => {
+    expect(codes("アブハジア")).toEqual(["XA"]);
+    expect(codes("南オセチア")).toEqual(["XO"]);
+    expect(codes("みなみおせちあ")).toEqual(["XO"]);
+    expect(codes("沿ドニエストル")).toEqual(["XT"]);
+    expect(codes("えんどにえすとる")).toEqual(["XT"]);
+    expect(codes("とらんすにすとりあ")).toEqual(["XT"]);
+  });
+
   test("一般的な呼び名で該当する国が出る", () => {
     expect(codes("韓国")).toContain("KR");
     expect(codes("中国")).toContain("CN");
@@ -82,6 +91,9 @@ describe("displayCountryCode", () => {
     expect(displayCountryCode("XK")).toBe("XK");
     expect(displayCountryCode("XN")).toBe("--");
     expect(displayCountryCode("XS")).toBe("--");
+    expect(displayCountryCode("XA")).toBe("--");
+    expect(displayCountryCode("XO")).toBe("--");
+    expect(displayCountryCode("XT")).toBe("--");
     expect(displayCountryCode("JP")).toBe("JP");
   });
 });

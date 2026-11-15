@@ -1,7 +1,11 @@
+import { geoArea, geoBounds, geoContains } from "d3-geo";
+import type { Feature, Position } from "geojson";
+import { feature } from "topojson-client";
 import { describe, expect, test } from "vitest";
 import topology from "world-atlas/countries-50m.json";
 import { UNRECOGNIZED_STATES } from "../records/unrecognizedStates";
 import { isVisited, toMapCountries } from "./countries";
+import { REGION_BOUNDARIES } from "./regionBoundaries";
 
 const countries = toMapCountries(topology);
 
@@ -78,6 +82,96 @@ describe("海外領土の切り出し", () => {
     const polygons = polygonsOf(code);
     expect(polygons.length).toBeGreaterThan(0);
     expect(polygons.every((p) => within(p, bounds))).toBe(true);
+  });
+});
+
+describe("親国の形状に含まれる地域の切り分け", () => {
+  const originals = feature(topology, topology.objects.countries).features;
+
+  function original(id: string) {
+    const found = originals.find((f) => f.id === id);
+    if (!found) {
+      throw new Error(`${id} が地図にない`);
+    }
+    return found;
+  }
+
+  function only(alpha2: string) {
+    const found = countries.filter((c) => c.alpha2 === alpha2);
+    expect(found).toHaveLength(1);
+    const [country] = found;
+    if (!country) {
+      throw new Error(`${alpha2} の形状がない`);
+    }
+    return country.feature;
+  }
+
+  function outerRing({ geometry }: Feature): Position[] {
+    return geometry.type === "Polygon" ? (geometry.coordinates[0] ?? []) : [];
+  }
+
+  const samePosition = (a: Position, b: Position) => a[0] === b[0] && a[1] === b[1];
+
+  const cases = [
+    { code: "XA", parent: "GE", parentId: "268" },
+    { code: "XO", parent: "GE", parentId: "268" },
+    { code: "XT", parent: "MD", parentId: "498" },
+  ] as const;
+
+  test.each(cases)("$code の境界線の両端は、元の $parent の外周にちょうど 1 回ずつある", (c) => {
+    const ring = outerRing(original(c.parentId)).slice(0, -1);
+    const line = REGION_BOUNDARIES[c.code] ?? [];
+    for (const end of [line[0], line.at(-1)]) {
+      expect(end).toBeDefined();
+      expect(ring.filter((p) => end !== undefined && samePosition(p, end))).toHaveLength(1);
+    }
+  });
+
+  test.each(cases)("$code の境界線の頂点は、両端を除いてすべて元の $parent の内側にある", (c) => {
+    const parent = original(c.parentId);
+    const inner = (REGION_BOUNDARIES[c.code] ?? []).slice(1, -1);
+    expect(inner.every((p) => geoContains(parent, [p[0] ?? Number.NaN, p[1] ?? Number.NaN]))).toBe(
+      true,
+    );
+  });
+
+  test.each([
+    { parent: "GE", parentId: "268", regions: ["XA", "XO"] },
+    { parent: "MD", parentId: "498", regions: ["XT"] },
+  ])("分けた後の形状はどれも元の $parent より小さく、面積の合計は元の $parent と同じ", (c) => {
+    const total = geoArea(original(c.parentId));
+    const areas = [c.parent, ...c.regions].map((code) => geoArea(only(code)));
+    for (const area of areas) {
+      expect(area).toBeGreaterThan(0);
+      expect(area).toBeLessThan(total);
+    }
+    expect(areas.reduce((sum, area) => sum + area, 0)).toBeCloseTo(total, 10);
+  });
+
+  test.each(cases)("残りの $parent の頂点は、どれも $code の内側にない", (c) => {
+    const region = only(c.code);
+    const regionRing = outerRing(region);
+    const rest = outerRing(only(c.parent)).filter(
+      (p) => !regionRing.some((q) => samePosition(p, q)),
+    );
+    expect(rest.length).toBeGreaterThan(0);
+    expect(rest.some((p) => geoContains(region, [p[0] ?? Number.NaN, p[1] ?? Number.NaN]))).toBe(
+      false,
+    );
+  });
+
+  test("残りのジョージアの範囲は、アブハジアの西端まで広がらない（ジョージアへ寄せる範囲に入らない）", () => {
+    const [[abkhaziaWest]] = geoBounds(only("XA"));
+    const [[georgiaWest]] = geoBounds(only("GE"));
+    expect(georgiaWest).toBeGreaterThan(abkhaziaWest + 1);
+  });
+
+  test("分けた地域の形状は親国の id と名前を持たない", () => {
+    for (const { code } of cases) {
+      expect(only(code).id).toBeUndefined();
+      expect(only(code).properties).toEqual({});
+    }
+    expect(only("GE").properties?.["name"]).toBe("Georgia");
   });
 });
 

@@ -1,8 +1,9 @@
-import type { Feature, Position } from "geojson";
+import type { Feature, Geometry, MultiPolygon, Polygon, Position } from "geojson";
 import { numericToAlpha2 } from "i18n-iso-countries";
 import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import { UNRECOGNIZED_STATES } from "../records/unrecognizedStates";
+import { REGION_BOUNDARIES } from "./regionBoundaries";
 
 /** 地図上の1つの国（または国コードを持たない地域）の形状。 */
 export type MapCountry = {
@@ -83,8 +84,114 @@ function splitOverseasTerritories(alpha2: string, countryFeature: Feature): MapC
   }));
 }
 
+/** 親国の alpha-2 ごとの、その形状から境界線で分ける地域の ID。 */
+const splitRegionCodesByParent = new Map<string, string[]>();
+for (const { code, mapShape } of UNRECOGNIZED_STATES) {
+  if (mapShape.kind === "split") {
+    splitRegionCodesByParent.set(mapShape.parent, [
+      ...(splitRegionCodesByParent.get(mapShape.parent) ?? []),
+      code,
+    ]);
+  }
+}
+
+function samePosition(a: Position, b: Position | undefined) {
+  return b !== undefined && a[0] === b[0] && a[1] === b[1];
+}
+
+/**
+ * 閉じた外周を境界線で2つに分け、[地域の外周, 残りの外周] を返す。境界線の両端が外周にちょうど1回ずつなければ undefined。
+ * 地域は「外周を境界線の終点から始点まで順にたどった区間」と「境界線（始点から終点）」で囲まれる（map/regionBoundaries.ts）。
+ * d3-geo は外周の向きで内側を決めるため、どちらの外周も元の外周と同じ向きにたどる。
+ */
+function splitRing(
+  ring: readonly Position[],
+  line: readonly Position[],
+): [Position[], Position[]] | undefined {
+  const [start, ...rest] = line;
+  const end = rest.pop();
+  if (start === undefined || end === undefined) {
+    return undefined;
+  }
+  // 閉じた外周は最後の点が最初の点と同じなので除く
+  const points = ring.slice(0, -1);
+  const indexOf = (target: Position) => {
+    const found = points.flatMap((p, i) => (samePosition(target, p) ? [i] : []));
+    return found.length === 1 ? found[0] : undefined;
+  };
+  const i = indexOf(start);
+  const j = indexOf(end);
+  if (i === undefined || j === undefined || i === j) {
+    return undefined;
+  }
+  /** 外周を from から to まで順にたどった点（両端を含む）。 */
+  const arc = (from: number, to: number) => {
+    const length = (to - from + points.length) % points.length;
+    return Array.from(
+      { length: length + 1 },
+      (_, k) => points[(from + k) % points.length] ?? [Number.NaN, Number.NaN],
+    );
+  };
+  const close = (open: Position[]) => [...open, open[0] ?? [Number.NaN, Number.NaN]];
+  return [close([...arc(j, i), ...rest]), close([...arc(i, j), ...rest.toReversed()])];
+}
+
+/** 形状を境界線で分け、[地域の形状, 残りの形状] を返す。境界線の両端を外周に持つポリゴンがなければ undefined。 */
+function splitGeometry(
+  geometry: Geometry,
+  line: readonly Position[],
+): [Polygon, Polygon | MultiPolygon] | undefined {
+  const polygons =
+    geometry.type === "Polygon"
+      ? [geometry.coordinates]
+      : geometry.type === "MultiPolygon"
+        ? geometry.coordinates
+        : [];
+  for (const [index, [outer = [], ...holes]] of polygons.entries()) {
+    const rings = splitRing(outer, line);
+    if (rings !== undefined) {
+      const [regionRing, restRing] = rings;
+      // 分ける対象の親国（GE・MD）のポリゴンには穴がない。穴があれば残りの側に付けたままにする
+      const restPolygon = [restRing, ...holes];
+      const restPolygons = polygons.map((p, k) => (k === index ? restPolygon : p));
+      return [
+        { type: "Polygon", coordinates: [regionRing] },
+        geometry.type === "Polygon"
+          ? { type: "Polygon", coordinates: restPolygon }
+          : { type: "MultiPolygon", coordinates: restPolygons },
+      ];
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 親国の形状に含まれている「国として扱う ISO 3166-1 にない地域」を、境界線で親国から分ける。
+ * 境界線の両端が見つからない地域（world-atlas の更新などで国境が変わった場合）は分けず、親国の形状をそのまま残す。
+ */
+function splitEnclosedRegions(alpha2: string, countryFeature: Feature): MapCountry[] {
+  let parent = countryFeature;
+  const regions: MapCountry[] = [];
+  for (const code of splitRegionCodesByParent.get(alpha2) ?? []) {
+    const line = REGION_BOUNDARIES[code];
+    const split = line === undefined ? undefined : splitGeometry(parent.geometry, line);
+    if (split !== undefined) {
+      const [regionGeometry, restGeometry] = split;
+      // 親国の id や名前を地域に引き継がない
+      regions.push({
+        alpha2: code,
+        feature: { ...countryFeature, id: undefined, properties: {}, geometry: regionGeometry },
+      });
+      parent = { ...parent, geometry: restGeometry };
+    }
+  }
+  return [{ alpha2, feature: parent }, ...regions];
+}
+
 const unrecognizedCodeByMapName = new Map(
-  UNRECOGNIZED_STATES.map(({ code, mapName }) => [mapName, code]),
+  UNRECOGNIZED_STATES.flatMap(({ code, mapShape }) =>
+    mapShape.kind === "feature" ? [[mapShape.name, code] as const] : [],
+  ),
 );
 
 /** 形状の名前が国として扱う ISO 3166-1 にない地域に当たれば、その ID を返す。 */
@@ -97,6 +204,7 @@ function unrecognizedCode(countryFeature: Feature): string | undefined {
  * world-atlas の TopoJSON（id は ISO 3166-1 numeric）を、alpha-2 で識別する国の一覧に変換する。
  * id のない形状は、国として扱う ISO 3166-1 にない地域の名前に一致すればその ID で識別する。
  * id のある国の扱いを変えないよう、名前での照合は id のない形状に限る。
+ * 親国の形状に含まれる海外領土と ISO 3166-1 にない地域は、親国から分けて別の国として扱う。
  */
 export function toMapCountries(topology: CountriesTopology): MapCountry[] {
   return feature(topology, topology.objects.countries).features.flatMap(
@@ -107,7 +215,11 @@ export function toMapCountries(topology: CountriesTopology): MapCountry[] {
           : numericToAlpha2(countryFeature.id);
       return alpha2 === undefined
         ? [{ alpha2, feature: countryFeature }]
-        : splitOverseasTerritories(alpha2, countryFeature);
+        : splitOverseasTerritories(alpha2, countryFeature).flatMap((country) =>
+            country.alpha2 === undefined
+              ? [country]
+              : splitEnclosedRegions(country.alpha2, country.feature),
+          );
     },
   );
 }

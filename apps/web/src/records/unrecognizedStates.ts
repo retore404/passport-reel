@@ -1,3 +1,12 @@
+/**
+ * 地図データ（world-atlas）での形状の見つけ方。
+ * - feature: ISO の id を持たない単独の形状があり、その name で引く
+ * - split: 親国の形状に含まれており、親国（ISO 3166-1 alpha-2）を境界線で分けて作る（境界線は map/regionBoundaries.ts）
+ */
+type MapShape =
+  | { readonly kind: "feature"; readonly name: string }
+  | { readonly kind: "split"; readonly parent: string };
+
 /** 国として扱う ISO 3166-1 にない地域。 */
 export type UnrecognizedState = {
   /**
@@ -9,8 +18,7 @@ export type UnrecognizedState = {
   readonly name: string;
   /** 記録の一覧や候補で国コードとして表示する文字列。国名データに 2 文字コードがない地域は "--" */
   readonly displayCode: string;
-  /** 地図データ（world-atlas）で ISO の id を持たない形状の name。この名前の形状をこの地域として塗る */
-  readonly mapName: string;
+  readonly mapShape: MapShape;
 };
 
 /**
@@ -19,7 +27,25 @@ export type UnrecognizedState = {
  * 「国として扱う ISO 3166-1 にない地域」であり、地域を足すときは先に仕様の一覧を更新する。
  */
 export const UNRECOGNIZED_STATES: readonly UnrecognizedState[] = [
-  { code: "XK", name: "コソボ", displayCode: "XK", mapName: "Kosovo" },
-  { code: "XN", name: "北キプロス", displayCode: "--", mapName: "N. Cyprus" },
-  { code: "XS", name: "ソマリランド", displayCode: "--", mapName: "Somaliland" },
+  { code: "XK", name: "コソボ", displayCode: "XK", mapShape: { kind: "feature", name: "Kosovo" } },
+  {
+    code: "XN",
+    name: "北キプロス",
+    displayCode: "--",
+    mapShape: { kind: "feature", name: "N. Cyprus" },
+  },
+  {
+    code: "XS",
+    name: "ソマリランド",
+    displayCode: "--",
+    mapShape: { kind: "feature", name: "Somaliland" },
+  },
+  { code: "XA", name: "アブハジア", displayCode: "--", mapShape: { kind: "split", parent: "GE" } },
+  { code: "XO", name: "南オセチア", displayCode: "--", mapShape: { kind: "split", parent: "GE" } },
+  {
+    code: "XT",
+    name: "沿ドニエストル",
+    displayCode: "--",
+    mapShape: { kind: "split", parent: "MD" },
+  },
 ];

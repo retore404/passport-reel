@@ -141,6 +141,24 @@ describe("planWorldMap", () => {
     expect(colorOf(plan, "SO")).toBe(MAP_COLORS.unvisited);
   });
 
+  test("親国を登録しても、親国の形状に含まれていた地域は塗られない", () => {
+    const plan = planWorldMap(size, countries, new Set(["GE", "MD"]));
+    expect(colorOf(plan, "GE")).toBe(MAP_COLORS.visited);
+    expect(colorOf(plan, "MD")).toBe(MAP_COLORS.visited);
+    for (const code of ["XA", "XO", "XT"]) {
+      expect(colorOf(plan, code)).toBe(MAP_COLORS.unvisited);
+    }
+  });
+
+  test("親国の形状に含まれていた地域を登録すると、その地域だけが塗られる", () => {
+    const plan = planWorldMap(size, countries, new Set(["XA", "XO", "XT"]));
+    for (const code of ["XA", "XO", "XT"]) {
+      expect(colorOf(plan, code)).toBe(MAP_COLORS.visited);
+    }
+    expect(colorOf(plan, "GE")).toBe(MAP_COLORS.unvisited);
+    expect(colorOf(plan, "MD")).toBe(MAP_COLORS.unvisited);
+  });
+
   test("地図に対応しないコードが混在しても、対応する国はハイライトされる", () => {
     const plan = planWorldMap(size, countries, new Set(["JP", "ZZ"]));
     expect(colorOf(plan, "JP")).toBe(MAP_COLORS.visited);
