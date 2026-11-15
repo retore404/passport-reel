@@ -3,6 +3,7 @@ import {
   COUNTRY_ALIASES,
   COUNTRY_NAMES,
   countryName,
+  displayCountryCode,
   normalizeForSearch,
   searchCountries,
 } from "./countryNames";
@@ -13,6 +14,13 @@ describe("COUNTRY_NAMES", () => {
   test("日本語名を持つ国の一覧になっている", () => {
     expect(COUNTRY_NAMES.length).toBeGreaterThan(240);
     expect(countryName("FR")).toBe("フランス");
+  });
+
+  test("ISO 3166-1 にない地域が含まれ、XK は重複しない", () => {
+    expect(countryName("XN")).toBe("北キプロス");
+    expect(countryName("XS")).toBe("ソマリランド");
+    expect(countryName("XK")).toBe("コソボ");
+    expect(COUNTRY_NAMES.filter(({ code }) => code === "XK")).toHaveLength(1);
   });
 
   test("別名表のコードはすべて日本語データに存在する", () => {
@@ -38,6 +46,13 @@ describe("searchCountries", () => {
     expect(codes("ふらんす")).toContain("FR");
   });
 
+  test("ISO 3166-1 にない地域も日本語名で候補に出る", () => {
+    expect(codes("きぷろす")).toEqual(expect.arrayContaining(["CY", "XN"]));
+    expect(codes("きたきぷろす")).toEqual(["XN"]);
+    expect(codes("ソマリランド")).toContain("XS");
+    expect(codes("コソボ")).toEqual(["XK"]);
+  });
+
   test("一般的な呼び名で該当する国が出る", () => {
     expect(codes("韓国")).toContain("KR");
     expect(codes("中国")).toContain("CN");
@@ -59,5 +74,14 @@ describe("searchCountries", () => {
   test("一致しない文字列や空の入力では候補が空になる", () => {
     expect(searchCountries("該当しない国")).toEqual([]);
     expect(searchCountries("  ")).toEqual([]);
+  });
+});
+
+describe("displayCountryCode", () => {
+  test("ISO 3166-1 にない地域は決められた表示にし、それ以外はコードをそのまま返す", () => {
+    expect(displayCountryCode("XK")).toBe("XK");
+    expect(displayCountryCode("XN")).toBe("--");
+    expect(displayCountryCode("XS")).toBe("--");
+    expect(displayCountryCode("JP")).toBe("JP");
   });
 });

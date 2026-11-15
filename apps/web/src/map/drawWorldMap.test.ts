@@ -118,8 +118,31 @@ describe("planWorldMap", () => {
     expect(markerOf(plan, "GP").y).toBeLessThan(markerOf(plan, "MQ").y);
   });
 
+  test("ISO 3166-1 にない地域を登録すると、その地域が塗られる", () => {
+    const plan = planWorldMap(size, countries, new Set(["XK", "XN", "XS"]));
+    for (const code of ["XK", "XN", "XS"]) {
+      expect(colorOf(plan, code)).toBe(MAP_COLORS.visited);
+    }
+  });
+
+  test("親国を登録しても、ISO 3166-1 にない地域は塗られない", () => {
+    const plan = planWorldMap(size, countries, new Set(["CY", "SO"]));
+    expect(colorOf(plan, "CY")).toBe(MAP_COLORS.visited);
+    expect(colorOf(plan, "SO")).toBe(MAP_COLORS.visited);
+    expect(colorOf(plan, "XN")).toBe(MAP_COLORS.unvisited);
+    expect(colorOf(plan, "XS")).toBe(MAP_COLORS.unvisited);
+  });
+
+  test("ISO 3166-1 にない地域を登録しても、親国は塗られない", () => {
+    const plan = planWorldMap(size, countries, new Set(["XN", "XS"]));
+    expect(colorOf(plan, "XN")).toBe(MAP_COLORS.visited);
+    expect(colorOf(plan, "XS")).toBe(MAP_COLORS.visited);
+    expect(colorOf(plan, "CY")).toBe(MAP_COLORS.unvisited);
+    expect(colorOf(plan, "SO")).toBe(MAP_COLORS.unvisited);
+  });
+
   test("地図に対応しないコードが混在しても、対応する国はハイライトされる", () => {
-    const plan = planWorldMap(size, countries, new Set(["JP", "XK", "ZZ"]));
+    const plan = planWorldMap(size, countries, new Set(["JP", "ZZ"]));
     expect(colorOf(plan, "JP")).toBe(MAP_COLORS.visited);
   });
 });

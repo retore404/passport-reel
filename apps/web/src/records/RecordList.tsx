@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { countryName } from "./countryNames";
+import { countryName, displayCountryCode } from "./countryNames";
 import { groupByYear, isRevisit, type VisitRecord, type YearGroup } from "./visitRecords";
 
 type Props = {
@@ -190,7 +190,7 @@ function RecordRow({
           ))}
         </svg>
       </button>
-      <span className="country-code">{record.country}</span>
+      <span className="country-code">{displayCountryCode(record.country)}</span>
       <span className="record-name">{name}</span>
       {revisit && <span className="tag">再訪</span>}
       <button
