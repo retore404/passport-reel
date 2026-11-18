@@ -17,7 +17,7 @@
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm knip && pnpm test"
   },
   "devDependencies": {
-    "knip": "6.41.0",
+    "knip": "6.45.1",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
     "oxlint-tsgolint": "7.0.2004",
