@@ -4,6 +4,7 @@
   "timezone": "Asia/Tokyo",
   "minimumReleaseAge": "7 days",
   "internalChecksFilter": "strict",
+  "platformAutomerge": false,
   "dockerfile": {
     "pinDigests": true
   },
@@ -12,6 +13,13 @@
       "description": "ghcr.io や mcr.microsoft.com は公開日時を返さず、7 日待機を課すと更新が永久に保留されるため、docker 系（devcontainer の feature とベースイメージ）は待機の対象外とする",
       "matchDatasources": ["docker"],
       "minimumReleaseAge": null
+    },
+    {
+      "description": "PR が多数並ぶのを避けるため major 以外の更新は 1 本の PR に集約し、CI を含むすべてのチェックが成功したら自動マージする。破壊的変更がありうる major は個別 PR のまま手動でレビューする。main に必須チェックを設けないため GitHub の auto-merge は使えず、Renovate 自身がチェック結果を見てマージする（platformAutomerge: false）",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "groupName": "non-major dependencies",
+      "groupSlug": "non-major",
+      "automerge": true
     }
   ]
 }
