@@ -12,7 +12,13 @@
 - 依存の更新 PR は [Renovate](https://docs.renovatebot.com/) が作成する。設定は `renovate.json` にある。利用には Renovate GitHub App をリポジトリへインストールする必要がある。
 - 対象は pnpm の依存と `package.json#packageManager`、`mise.toml` のツール、devcontainer の feature と Dockerfile のベースイメージ（digest で固定する）。
 - 公開から7日未満のバージョンへの更新 PR は作らない。ただし公開日時を取得できない docker 系（devcontainer の feature とベースイメージ）は待機の対象外とする。
-- 自動マージはしない。PR はすべて手動でレビューしてマージする。
+- major 以外の更新（minor・patch・digest など）は 1 本の PR にまとめ、CI を含むすべてのチェックが成功したら Renovate が自動でマージする。
+- major 更新は更新ごとに個別の PR とし、手動でレビューしてマージする。
+
+## CI
+
+- すべての PR で GitHub Actions（`.github/workflows/ci.yml`）が `pnpm check` と `apps/web` のビルドを実行する。
+- CI の成功は `main` へのマージの必須条件にはしていない。Renovate の集約 PR の自動マージ判定に使う。
 
 ## 構成
 
