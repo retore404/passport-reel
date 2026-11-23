@@ -70,4 +70,11 @@ if [ -d /home/vscode/.codex ]; then
 fi
 echo "END: Codex config setup"
 
+# Chrome DevTools MCPが起動するヘッドレスChrome導入
+echo "BEGIN: chrome-headless-shell setup"
+# MCP設定がバージョンに依存しない固定パスで参照できるよう、導入先へのシンボリックリンクを張る
+chrome_headless_shell_path="$(pnpm dlx @puppeteer/browsers@3.2.7 install chrome-headless-shell@stable --path "$HOME/.cache/chrome-headless-shell" --format '{{path}}' | grep '^/')"
+ln -sfn "$chrome_headless_shell_path" "$HOME/.local/bin/chrome-headless-shell"
+echo "END: chrome-headless-shell setup"
+
 echo "Setup completed successfully!"

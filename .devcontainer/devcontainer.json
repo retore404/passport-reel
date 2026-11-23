@@ -25,7 +25,9 @@
     "source=passport-reel-claude-plugins,target=/home/vscode/.claude/plugins,type=volume",
     "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached",
     // Codexの認証情報・セッション・履歴の永続化（ホストと同期）
-    "source=${localEnv:HOME}/.codex,target=/home/vscode/.codex,type=bind,consistency=cached"
+    "source=${localEnv:HOME}/.codex,target=/home/vscode/.codex,type=bind,consistency=cached",
+    // T3Codeのペアリング状態・スレッドを、Dev Containerの再作成後も維持する
+    "source=passport-reel-t3,target=/home/vscode/.t3,type=volume"
   ],
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",

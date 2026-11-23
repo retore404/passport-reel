@@ -4,3 +4,20 @@ sandbox_mode = "workspace-write"
 [features]
 multi_agent = true
 default_mode_request_user_input = true
+
+# Dev Containerは既定のseccompで動き、Chromeのサンドボックスに必要な名前空間を作れないため、
+# Chromeのサンドボックスを無効にして起動する（隔離はDev Container自体に委ねる）。.mcp.jsonも同じ設定にする
+[mcp_servers.chrome-devtools]
+command = "pnpm"
+args = [
+  "dlx",
+  "chrome-devtools-mcp@latest",
+  "--headless",
+  "--isolated",
+  "--executablePath=/home/vscode/.local/bin/chrome-headless-shell",
+  "--chromeArg=--no-sandbox",
+]
+
+# ページの状態を読み取るだけの操作は承認なしで実行できるようにする
+[mcp_servers.chrome-devtools.tools.take_snapshot]
+approval_mode = "approve"
