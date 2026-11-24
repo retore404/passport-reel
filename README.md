@@ -4,21 +4,8 @@
 # 開発環境
 
 - 開発環境は DevContainer を使うことを前提としている。
-- Node.js / Claude Code / Codex / OpenSpec / T3Code は mise（`mise.toml`）、pnpm は `package.json#packageManager` で版数を固定する。
+- Node.js / Claude Code / Codex / OpenSpec は mise（`mise.toml`）、pnpm は `package.json#packageManager` で版数を固定する。
 - 依存パッケージは公開から7日以上経ったものだけを入れる（`minimumReleaseAge`）。npm/npx は使わず pnpm を使う。
-
-## T3Code（ブラウザからコーディングエージェントを操作する）
-
-T3Code は Dev Container 内でサーバーとして起動し、ホストのブラウザから操作する。エージェントは Dev Container 内の Claude Code・Codex とその認証情報をそのまま使う。
-
-```bash
-t3 serve
-```
-
-- 起動時に待ち受けポートとペアリング URL が表示される。VS Code の「ポート」パネルでそのポートを転送し（自動転送はしない設定にしている）、ペアリング URL のホストとポートを転送先に読み替えてホストのブラウザで開く。
-- 起動中のサーバーに別のブラウザを追加するときは、別のターミナルで `t3 pair` を実行し、表示された URL を開く。
-- ペアリング URL はパスワードと同等に扱う。
-- ペアリング状態とスレッドは名前付きボリューム（`passport-reel-t3`）の `~/.t3` に保存され、Dev Container を作り直しても残る。
 
 ## Chrome DevTools MCP
 

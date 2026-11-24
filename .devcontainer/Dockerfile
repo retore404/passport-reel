@@ -12,6 +12,4 @@ RUN apt-get update \
         libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 libxkbcommon0 \
         libgbm1 libasound2t64 fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
-# 初回マウント時に名前付きボリュームへ引き継ぐ所有者・権限を設定する。
-RUN install -d -m 0700 -o vscode -g vscode /home/vscode/.t3
 USER vscode
