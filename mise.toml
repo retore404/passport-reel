@@ -1,5 +1,5 @@
 [tools]
 node = "26.13.1"
-claude = "2.1.327"
+claude = "2.1.328"
 "npm:@openai/codex" = "0.170.0"
 "npm:@fission-ai/openspec" = "2.1.0"
